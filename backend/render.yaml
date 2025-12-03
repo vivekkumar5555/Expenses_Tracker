@@ -1,8 +1,11 @@
+# Render Blueprint for SmartSpend+ Backend
+# Deploy as: Web Service
+
 services:
   - type: web
     name: smartspend-backend
-    env: node
-    buildCommand: npm install && npx prisma generate
+    runtime: node
+    buildCommand: npm install
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -14,12 +17,4 @@ services:
       - key: JWT_EXPIRES_IN
         value: 7d
       - key: FRONTEND_URL
-        sync: false
-      - key: EMAIL_HOST
-        sync: false
-      - key: EMAIL_PORT
-        sync: false
-      - key: EMAIL_USER
-        sync: false
-      - key: EMAIL_PASS
         sync: false

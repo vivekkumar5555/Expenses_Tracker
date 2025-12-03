@@ -123,12 +123,23 @@ export const requestPasswordReset = async (req, res, next) => {
   try {
     const { email } = req.body;
 
+    console.log("📧 Password reset requested for:", email);
+
+    // Check if Prisma is properly initialized
+    if (!prisma || !prisma.user) {
+      console.error("❌ Prisma client not initialized properly");
+      return res.status(500).json({
+        message: "Server configuration error. Please try again later.",
+      });
+    }
+
     const user = await prisma.user.findUnique({
       where: { email },
     });
 
     if (!user) {
-      // Don't reveal if user exists
+      // Don't reveal if user exists - but still return success
+      console.log("ℹ️  User not found, returning success anyway");
       return res.json({ message: "If email exists, reset code has been sent" });
     }
 
@@ -136,8 +147,24 @@ export const requestPasswordReset = async (req, res, next) => {
     const code = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
+    console.log("🔐 Generated OTP for user:", user.id);
+
+    // Check if otpCode model exists
+    if (!prisma.oTPCode) {
+      console.error("❌ OTPCode model not found in Prisma client");
+      console.error(
+        "   Available models:",
+        Object.keys(prisma).filter(
+          (k) => !k.startsWith("_") && !k.startsWith("$")
+        )
+      );
+      return res.status(500).json({
+        message: "Server configuration error. Please try again later.",
+      });
+    }
+
     // Save OTP
-    await prisma.otpCode.create({
+    await prisma.oTPCode.create({
       data: {
         userId: user.id,
         code,
@@ -146,11 +173,15 @@ export const requestPasswordReset = async (req, res, next) => {
       },
     });
 
-    // Send email
+    console.log("💾 OTP saved to database");
+
+    // Send email (won't throw even if email fails)
     await sendOTPEmail(user.email, code, "password_reset");
 
     res.json({ message: "If email exists, reset code has been sent" });
   } catch (error) {
+    console.error("❌ Password reset error:", error.message);
+    console.error("   Stack:", error.stack);
     next(error);
   }
 };
@@ -167,7 +198,7 @@ export const verifyOTP = async (req, res, next) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const otpRecord = await prisma.otpCode.findFirst({
+    const otpRecord = await prisma.oTPCode.findFirst({
       where: {
         userId: user.id,
         code,
@@ -184,7 +215,7 @@ export const verifyOTP = async (req, res, next) => {
     }
 
     // Mark as used
-    await prisma.otpCode.update({
+    await prisma.oTPCode.update({
       where: { id: otpRecord.id },
       data: { used: true },
     });

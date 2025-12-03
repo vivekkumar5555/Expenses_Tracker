@@ -1,67 +1,74 @@
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { readFileSync, existsSync } from 'fs';
+import { existsSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// Serve static files from the dist directory
 const distPath = join(__dirname, 'dist');
+
+console.log('🚀 Starting SmartSpend+ Frontend Server...');
+console.log(`📁 Static files directory: ${distPath}`);
+console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+
+// Check if dist folder exists
+if (!existsSync(distPath)) {
+  console.error('❌ ERROR: dist folder not found!');
+  console.error('   Please run "npm run build" first');
+}
+
+// Check if index.html exists
+const indexPath = join(distPath, 'index.html');
+if (!existsSync(indexPath)) {
+  console.error('❌ ERROR: dist/index.html not found!');
+  console.error('   Please run "npm run build" first');
+}
+
+// Serve static files from dist directory
+// This handles: JS, CSS, images, fonts, etc.
 app.use(express.static(distPath, {
-  maxAge: '1y', // Cache static assets for 1 year
-  etag: true
+  maxAge: process.env.NODE_ENV === 'production' ? '1y' : '0',
+  etag: true,
+  index: false, // Don't automatically serve index.html for directories
 }));
 
-// Handle API proxy (if needed)
-// Uncomment if you want to proxy API requests to your backend
-// const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
-// app.use('/api', (req, res, next) => {
-//   // Proxy logic here
-//   next();
-// });
-
-// SPA fallback: serve index.html for all routes that don't match static files
+// SPA Fallback - THIS IS CRITICAL FOR REACT ROUTER
+// All routes that don't match static files will serve index.html
+// React Router will then handle the routing on the client side
 app.get('*', (req, res) => {
-  const indexPath = join(distPath, 'index.html');
+  console.log(`📄 Serving index.html for route: ${req.path}`);
   
   if (!existsSync(indexPath)) {
-    console.error(`index.html not found at ${indexPath}`);
     return res.status(500).send(`
+      <!DOCTYPE html>
       <html>
+        <head><title>Error</title></head>
         <body>
           <h1>Application Error</h1>
-          <p>The application has not been built. Please run 'npm run build' first.</p>
+          <p>The application has not been built.</p>
+          <p>Run: npm run build</p>
         </body>
       </html>
     `);
   }
-
-  try {
-    const indexHtml = readFileSync(indexPath, 'utf-8');
-    res.setHeader('Content-Type', 'text/html');
-    res.send(indexHtml);
-  } catch (error) {
-    console.error('Error serving index.html:', error);
-    res.status(500).send(`
-      <html>
-        <body>
-          <h1>Server Error</h1>
-          <p>Failed to load the application.</p>
-        </body>
-      </html>
-    `);
-  }
+  
+  // Send index.html for ALL routes - React Router handles the rest
+  res.sendFile(indexPath);
 });
 
+// Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Frontend server running on port ${PORT}`);
-  console.log(`📁 Serving static files from: ${distPath}`);
-  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`✅ SPA fallback enabled - all routes will serve index.html`);
-  console.log(`🔗 Visit: http://localhost:${PORT}`);
+  console.log('');
+  console.log('╔════════════════════════════════════════════════════════════╗');
+  console.log('║          SmartSpend+ Frontend Server Started               ║');
+  console.log('╠════════════════════════════════════════════════════════════╣');
+  console.log(`║  🌐 URL: http://0.0.0.0:${PORT}                              ║`);
+  console.log(`║  📁 Serving: ${distPath.slice(-40).padStart(40)}  ║`);
+  console.log('║  ✅ SPA Fallback: ENABLED                                  ║');
+  console.log('║  🔄 All routes → index.html → React Router                 ║');
+  console.log('╚════════════════════════════════════════════════════════════╝');
+  console.log('');
 });
-

@@ -1,13 +1,12 @@
+# Render Blueprint for SmartSpend+ Frontend
+# Deploy as: Web Service (not Static Site)
+
 services:
   - type: web
     name: smartspend-frontend
-    env: node
+    runtime: node
     buildCommand: npm install && npm run build
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html

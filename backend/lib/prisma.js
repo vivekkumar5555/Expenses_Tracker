@@ -1,28 +1,26 @@
 import { PrismaClient } from '@prisma/client';
 
-// Singleton pattern for Prisma Client
-// This prevents multiple instances in development and production
-const globalForPrisma = global;
+// Create a single Prisma Client instance
+let prisma;
 
-const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+// Check if we're in production
+const isProduction = process.env.NODE_ENV === 'production';
+
+// In production, always create a new instance
+// In development, use global to prevent multiple instances during hot reload
+if (isProduction) {
+  prisma = new PrismaClient({
+    log: ['error'],
   });
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
+} else {
+  // Use globalThis for Node.js compatibility
+  if (!globalThis.__prisma) {
+    globalThis.__prisma = new PrismaClient({
+      log: ['query', 'error', 'warn'],
+    });
+  }
+  prisma = globalThis.__prisma;
 }
 
-// Handle connection errors gracefully
-prisma.$connect()
-  .then(() => {
-    console.log('✅ Database connected successfully');
-  })
-  .catch((error) => {
-    console.error('❌ Database connection failed:', error);
-    process.exit(1);
-  });
-
+// Export the prisma client
 export default prisma;
-
