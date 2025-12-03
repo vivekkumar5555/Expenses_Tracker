@@ -1,0 +1,8 @@
+{
+  "ext": "js,json",
+  "ignore": ["node_modules", ".git", "*.test.js"],
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
+

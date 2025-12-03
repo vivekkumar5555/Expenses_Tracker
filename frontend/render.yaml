@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: smartspend-frontend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+    # Static site alternative (uncomment if using static hosting):
+    # type: static
+    # buildCommand: npm install && npm run build
+    # staticPublishPath: ./dist
+    # headers:
+    #   - path: /*
+    #     name: X-Content-Type-Options
+    #     value: nosniff
+    # redirects:
+    #   - path: /*
+    #     destination: /index.html
+

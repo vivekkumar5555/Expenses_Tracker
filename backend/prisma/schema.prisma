@@ -1,0 +1,186 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  emailVerified Boolean   @default(false) @map("email_verified")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  expenses          Expense[]
+  categories        Category[]
+  budgets           Budget[]
+  recurringExpenses RecurringExpense[]
+  scheduledExpenses ScheduledExpense[]
+  savingsGoals      SavingsGoal[]
+  settings          UserSettings?
+  otpCodes          OTPCode[]
+  
+  @@map("users")
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String
+  icon        String?
+  color       String?
+  isDefault   Boolean  @default(false) @map("is_default")
+  userId      String?  @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  user              User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expenses          Expense[]
+  budgets           Budget[]
+  recurringExpenses RecurringExpense[]
+  scheduledExpenses ScheduledExpense[]
+  
+  @@map("categories")
+}
+
+model Expense {
+  id          String    @id @default(uuid())
+  amount      Float
+  description String?
+  date        DateTime
+  categoryId  String    @map("category_id")
+  userId      String    @map("user_id")
+  vendor      String?
+  notes       String?
+  paymentMode String    @default("cash") @map("payment_mode")
+  tags        String[]
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([categoryId])
+  @@index([date])
+  @@map("expenses")
+}
+
+model Budget {
+  id          String   @id @default(uuid())
+  name        String
+  amount      Float
+  period      String   // weekly, monthly, custom
+  startDate   DateTime @map("start_date")
+  endDate     DateTime? @map("end_date")
+  categoryId  String?  @map("category_id")
+  userId      String   @map("user_id")
+  alertThreshold Float? @default(80) @map("alert_threshold")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  
+  @@index([userId])
+  @@map("budgets")
+}
+
+model RecurringExpense {
+  id          String   @id @default(uuid())
+  name        String
+  amount      Float
+  frequency   String   // daily, weekly, monthly
+  startDate   DateTime @map("start_date")
+  endDate     DateTime? @map("end_date")
+  categoryId  String   @map("category_id")
+  userId      String   @map("user_id")
+  isActive    Boolean  @default(true) @map("is_active")
+  nextDueDate DateTime @map("next_due_date")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@map("recurring_expenses")
+}
+
+model ScheduledExpense {
+  id          String   @id @default(uuid())
+  name        String
+  amount      Float
+  dueDate     DateTime @map("due_date")
+  categoryId  String   @map("category_id")
+  userId      String   @map("user_id")
+  status      String   @default("pending") // pending, paid, overdue
+  paidDate    DateTime? @map("paid_date")
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([dueDate])
+  @@map("scheduled_expenses")
+}
+
+model SavingsGoal {
+  id              String   @id @default(uuid())
+  name            String
+  targetAmount    Float    @map("target_amount")
+  currentAmount   Float    @default(0) @map("current_amount")
+  targetDate      DateTime @map("target_date")
+  userId          String   @map("user_id")
+  requiredDaily   Float?   @map("required_daily")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@map("savings_goals")
+}
+
+model UserSettings {
+  id            String   @id @default(uuid())
+  userId        String   @unique @map("user_id")
+  currency      String   @default("USD")
+  language      String   @default("en")
+  approvalLimit Float?   @map("approval_limit")
+  theme         String   @default("light")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_settings")
+}
+
+model OTPCode {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  code      String
+  type      String   // password_reset, email_verification
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([code])
+  @@map("otp_codes")
+}
+
