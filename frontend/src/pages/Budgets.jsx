@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import api from '../utils/axios';
 import { useForm } from 'react-hook-form';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import Toast from '../components/Toast';
+import { useToast } from '../hooks/useToast';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useConfirmation } from '../hooks/useConfirmation';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function Budgets() {
   const [budgets, setBudgets] = useState([]);
@@ -12,6 +17,9 @@ export default function Budgets() {
   const [editingBudget, setEditingBudget] = useState(null);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const { toast, showToast, hideToast } = useToast();
+  const { confirmation, confirm, closeConfirmation } = useConfirmation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchCategories();
@@ -50,9 +58,10 @@ export default function Budgets() {
       setEditingBudget(null);
       reset();
       fetchBudgets();
+      showToast(t('budgets.budgetSaved'), 'success');
     } catch (error) {
       console.error('Failed to save budget:', error);
-      alert(error.response?.data?.message || 'Failed to save budget');
+      showToast(error.response?.data?.message || t('budgets.budgetSaved'), 'error');
     }
   };
 
@@ -71,19 +80,50 @@ export default function Budgets() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this budget?')) return;
+    const confirmed = await confirm({
+      title: t('budgets.deleteBudget'),
+      message: t('budgets.confirmDelete'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      type: 'danger'
+    });
+
+    if (!confirmed) return;
 
     try {
       await api.delete(`/budgets/${id}`);
       fetchBudgets();
+      showToast(t('budgets.budgetDeleted'), 'success');
     } catch (error) {
       console.error('Failed to delete budget:', error);
-      alert('Failed to delete budget');
+      showToast(t('budgets.budgetDeleted'), 'error');
     }
   };
 
   return (
     <Layout>
+      <AnimatePresence>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            duration={toast.duration}
+            onClose={hideToast}
+          />
+        )}
+      </AnimatePresence>
+
+      <ConfirmationModal
+        isOpen={!!confirmation}
+        onClose={closeConfirmation}
+        onConfirm={confirmation?.onConfirm || (() => {})}
+        title={confirmation?.title}
+        message={confirmation?.message}
+        confirmText={confirmation?.confirmText}
+        cancelText={confirmation?.cancelText}
+        type={confirmation?.type}
+      />
+      
       <div className="space-y-4 lg:space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h2 className="text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white">Budgets</h2>

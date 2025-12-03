@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import api from '../utils/axios';
 import { useForm } from 'react-hook-form';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import Toast from '../components/Toast';
+import { useToast } from '../hooks/useToast';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useConfirmation } from '../hooks/useConfirmation';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function ScheduledExpenses() {
   const [scheduledExpenses, setScheduledExpenses] = useState([]);
@@ -13,6 +18,9 @@ export default function ScheduledExpenses() {
   const [statusFilter, setStatusFilter] = useState('');
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const { toast, showToast, hideToast } = useToast();
+  const { confirmation, confirm, closeConfirmation } = useConfirmation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchCategories();
@@ -52,9 +60,10 @@ export default function ScheduledExpenses() {
       setEditingExpense(null);
       reset();
       fetchScheduledExpenses();
+      showToast(t('scheduled.scheduledSaved'), 'success');
     } catch (error) {
       console.error('Failed to save scheduled expense:', error);
-      alert(error.response?.data?.message || 'Failed to save scheduled expense');
+      showToast(error.response?.data?.message || t('scheduled.scheduledSaved'), 'error');
     }
   };
 
@@ -72,14 +81,23 @@ export default function ScheduledExpenses() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this scheduled expense?')) return;
+    const confirmed = await confirm({
+      title: t('scheduled.deleteScheduled'),
+      message: t('scheduled.confirmDelete'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      type: 'danger'
+    });
+
+    if (!confirmed) return;
 
     try {
       await api.delete(`/scheduled-expenses/${id}`);
       fetchScheduledExpenses();
+      showToast(t('scheduled.scheduledDeleted'), 'success');
     } catch (error) {
       console.error('Failed to delete scheduled expense:', error);
-      alert('Failed to delete scheduled expense');
+      showToast(t('scheduled.scheduledDeleted'), 'error');
     }
   };
 
@@ -96,6 +114,27 @@ export default function ScheduledExpenses() {
 
   return (
     <Layout>
+      <AnimatePresence>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            duration={toast.duration}
+            onClose={hideToast}
+          />
+        )}
+      </AnimatePresence>
+
+      <ConfirmationModal
+        isOpen={!!confirmation}
+        onClose={closeConfirmation}
+        onConfirm={confirmation?.onConfirm || (() => {})}
+        title={confirmation?.title}
+        message={confirmation?.message}
+        confirmText={confirmation?.confirmText}
+        cancelText={confirmation?.cancelText}
+        type={confirmation?.type}
+      />
       <div className="space-y-4 lg:space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h2 className="text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white">Scheduled Expenses</h2>

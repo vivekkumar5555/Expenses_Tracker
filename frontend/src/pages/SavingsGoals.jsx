@@ -2,7 +2,12 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import api from '../utils/axios';
 import { useForm } from 'react-hook-form';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import Toast from '../components/Toast';
+import { useToast } from '../hooks/useToast';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useConfirmation } from '../hooks/useConfirmation';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function SavingsGoals() {
   const [savingsGoals, setSavingsGoals] = useState([]);
@@ -11,6 +16,9 @@ export default function SavingsGoals() {
   const [editingGoal, setEditingGoal] = useState(null);
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const { toast, showToast, hideToast } = useToast();
+  const { confirmation, confirm, closeConfirmation } = useConfirmation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     fetchSavingsGoals();
@@ -39,9 +47,10 @@ export default function SavingsGoals() {
       setEditingGoal(null);
       reset();
       fetchSavingsGoals();
+      showToast(t('savings.goalSaved'), 'success');
     } catch (error) {
       console.error('Failed to save savings goal:', error);
-      alert(error.response?.data?.message || 'Failed to save savings goal');
+      showToast(error.response?.data?.message || t('savings.goalSaved'), 'error');
     }
   };
 
@@ -57,19 +66,49 @@ export default function SavingsGoals() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this savings goal?')) return;
+    const confirmed = await confirm({
+      title: t('savings.deleteGoal'),
+      message: t('savings.confirmDelete'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      type: 'danger'
+    });
+
+    if (!confirmed) return;
 
     try {
       await api.delete(`/savings-goals/${id}`);
       fetchSavingsGoals();
+      showToast(t('savings.goalDeleted'), 'success');
     } catch (error) {
       console.error('Failed to delete savings goal:', error);
-      alert('Failed to delete savings goal');
+      showToast(t('savings.goalDeleted'), 'error');
     }
   };
 
   return (
     <Layout>
+      <AnimatePresence>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            duration={toast.duration}
+            onClose={hideToast}
+          />
+        )}
+      </AnimatePresence>
+
+      <ConfirmationModal
+        isOpen={!!confirmation}
+        onClose={closeConfirmation}
+        onConfirm={confirmation?.onConfirm || (() => {})}
+        title={confirmation?.title}
+        message={confirmation?.message}
+        confirmText={confirmation?.confirmText}
+        cancelText={confirmation?.cancelText}
+        type={confirmation?.type}
+      />
       <div className="space-y-4 lg:space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h2 className="text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white">Savings Goals</h2>

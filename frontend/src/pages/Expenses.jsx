@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import api from '../utils/axios';
 import { useForm } from 'react-hook-form';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from '../hooks/useTranslation';
 import { useLanguageCurrency } from '../contexts/LanguageCurrencyContext';
 import { useToast } from '../hooks/useToast';
 import Toast from '../components/Toast';
-import { AnimatePresence } from 'framer-motion';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { useConfirmation } from '../hooks/useConfirmation';
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState([]);
@@ -31,6 +32,7 @@ export default function Expenses() {
   const { t } = useTranslation();
   const { formatCurrency } = useLanguageCurrency();
   const { toast, showToast, hideToast } = useToast();
+  const { confirmation, confirm, closeConfirmation } = useConfirmation();
 
   useEffect(() => {
     fetchCategories();
@@ -98,7 +100,15 @@ export default function Expenses() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm(t('expenses.confirmDelete'))) return;
+    const confirmed = await confirm({
+      title: t('expenses.deleteExpense'),
+      message: t('expenses.confirmDelete'),
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel'),
+      type: 'danger'
+    });
+
+    if (!confirmed) return;
 
     try {
       await api.delete(`/expenses/${id}`);
@@ -126,6 +136,17 @@ export default function Expenses() {
           />
         )}
       </AnimatePresence>
+
+      <ConfirmationModal
+        isOpen={!!confirmation}
+        onClose={closeConfirmation}
+        onConfirm={confirmation?.onConfirm || (() => {})}
+        title={confirmation?.title}
+        message={confirmation?.message}
+        confirmText={confirmation?.confirmText}
+        cancelText={confirmation?.cancelText}
+        type={confirmation?.type}
+      />
       
       <div className="space-y-4 lg:space-y-6">
         {/* Header */}

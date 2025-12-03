@@ -3,8 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTranslation } from '../hooks/useTranslation';
-import LanguageSwitcher from './LanguageSwitcher';
-import CurrencySwitcher from './CurrencySwitcher';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DashboardIcon,
@@ -157,16 +155,12 @@ const Layout = ({ children }) => {
               <span className="text-lg font-bold text-gray-900 dark:text-white">SmartSpend</span>
             </Link>
           </div>
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher />
-            <CurrencySwitcher />
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-            >
-              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-            </button>
-          </div>
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+          </button>
         </div>
       </header>
 
@@ -208,9 +202,7 @@ const Layout = ({ children }) => {
               <h1 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
                 {menuItems.find(item => item.path === location.pathname)?.label || 'Dashboard'}
               </h1>
-              <div className="flex items-center gap-2 sm:gap-4">
-                <LanguageSwitcher className="hidden sm:block" />
-                <CurrencySwitcher className="hidden sm:block" />
+              <div className="flex items-center gap-4">
                 <button
                   onClick={toggleTheme}
                   className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"

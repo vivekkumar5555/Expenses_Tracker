@@ -1,12 +1,17 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import api from '../utils/axios';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import Toast from '../components/Toast';
+import { useToast } from '../hooks/useToast';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function Reports() {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { toast, showToast, hideToast } = useToast();
+  const { t } = useTranslation();
   const [dateRange, setDateRange] = useState({
     startDate: '',
     endDate: ''
@@ -49,9 +54,10 @@ export default function Reports() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      showToast(t('reports.exportCSV') + ' - Success!', 'success');
     } catch (error) {
       console.error('Failed to export CSV:', error);
-      alert('Failed to export CSV');
+      showToast(t('reports.exportFailed'), 'error');
     }
   };
 
@@ -60,6 +66,16 @@ export default function Reports() {
   if (loading) {
     return (
       <Layout>
+        <AnimatePresence>
+          {toast && (
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              duration={toast.duration}
+              onClose={hideToast}
+            />
+          )}
+        </AnimatePresence>
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
         </div>
@@ -69,6 +85,16 @@ export default function Reports() {
 
   return (
     <Layout>
+      <AnimatePresence>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            duration={toast.duration}
+            onClose={hideToast}
+          />
+        )}
+      </AnimatePresence>
       <div className="space-y-4 lg:space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <h2 className="text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white">Reports</h2>
