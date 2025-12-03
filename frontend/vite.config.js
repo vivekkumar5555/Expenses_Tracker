@@ -56,17 +56,35 @@ export default defineConfig({
     target: "es2020",
     outDir: "dist",
     assetsDir: "assets",
-    minify: "esbuild",
+    // Use terser with safe settings
+    minify: "terser",
     sourcemap: false,
     chunkSizeWarningLimit: 2000,
     commonjsOptions: {
       include: [/node_modules/],
       transformMixedEsModules: true,
     },
+    terserOptions: {
+      compress: {
+        drop_console: false,
+        drop_debugger: true,
+        // Don't hoist or reorder code that could break initialization
+        hoist_funs: false,
+        hoist_vars: false,
+        passes: 1, // Single pass to avoid aggressive optimizations
+      },
+      format: {
+        comments: false,
+        // Preserve variable names to avoid conflicts
+        preserve_annotations: true,
+      },
+      // CRITICAL: Don't mangle names to prevent initialization errors
+      mangle: false,
+    },
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // CRITICAL: Keep ALL React ecosystem together to prevent initialization errors
+          // CRITICAL: Keep ALL React ecosystem together
           if (
             id.includes("node_modules/react/") ||
             id.includes("node_modules/react-dom/") ||
@@ -87,19 +105,20 @@ export default defineConfig({
           if (id.includes("node_modules/framer-motion")) {
             return "animation-vendor";
           }
-          // Keep chart libraries together (recharts and its dependencies)
+          // CRITICAL: Keep recharts AND ALL d3 libraries together
+          // This prevents circular dependency initialization issues
           if (
             id.includes("node_modules/recharts") ||
             id.includes("node_modules/d3-") ||
-            id.includes("node_modules/d3")
+            id.includes("node_modules/d3/")
           ) {
             return "chart-vendor";
           }
-          // Keep axios and other HTTP libraries together
+          // Keep axios separate
           if (id.includes("node_modules/axios")) {
             return "http-vendor";
           }
-          // All other vendor code in one chunk to avoid circular deps
+          // All other vendor code in one chunk
           if (id.includes("node_modules")) {
             return "vendor";
           }
@@ -107,27 +126,19 @@ export default defineConfig({
         chunkFileNames: "assets/js/[name]-[hash].js",
         entryFileNames: "assets/js/[name]-[hash].js",
         assetFileNames: "assets/[ext]/[name]-[hash].[ext]",
-        // Prevent over-splitting which can cause initialization issues
-        experimentalMinChunkSize: 30000,
+        // Larger chunks to prevent over-splitting
+        experimentalMinChunkSize: 50000,
       },
       onwarn(warning, warn) {
-        // Suppress specific warnings that don't affect functionality
+        // Suppress specific warnings
         if (warning.code === "MODULE_LEVEL_DIRECTIVE") return;
         if (warning.code === "THIS_IS_UNDEFINED") return;
         if (warning.code === "CIRCULAR_DEPENDENCY") {
-          // Log but don't fail - we handle these by grouping dependencies
+          // Circular deps are handled by grouping
           return;
         }
         warn(warning);
       },
-    },
-    esbuild: {
-      target: "es2020",
-      legalComments: "none",
-      // Less aggressive minification to prevent variable name conflicts
-      minifyIdentifiers: false,
-      minifySyntax: true,
-      minifyWhitespace: true,
     },
   },
   publicDir: "public",
