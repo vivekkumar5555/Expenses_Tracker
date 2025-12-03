@@ -33,7 +33,7 @@
   
   .card {
     @apply bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-card;
-  }
+    }
   
   .card-hover {
     @apply card transition-all duration-200 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-700;

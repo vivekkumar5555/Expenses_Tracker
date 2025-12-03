@@ -5,30 +5,87 @@ let transporter = null;
 
 const createTransporter = () => {
   if (transporter) return transporter;
-  
+
   // Check if email is configured
-  const emailHost = process.env.EMAIL_HOST;
+  let emailHost = process.env.EMAIL_HOST;
   const emailUser = process.env.EMAIL_USER;
   const emailPass = process.env.EMAIL_PASS;
-  
+
   if (!emailHost || !emailUser || !emailPass) {
-    console.warn('⚠️  Email service not configured.');
-    console.warn('   Missing:', {
-      EMAIL_HOST: !emailHost ? 'NOT SET' : 'SET',
-      EMAIL_USER: !emailUser ? 'NOT SET' : 'SET',
-      EMAIL_PASS: !emailPass ? 'NOT SET' : 'SET'
+    console.warn("⚠️  Email service not configured.");
+    console.warn("   Missing:", {
+      EMAIL_HOST: !emailHost ? "NOT SET" : "SET",
+      EMAIL_USER: !emailUser ? "NOT SET" : "SET",
+      EMAIL_PASS: !emailPass ? "NOT SET" : "SET",
     });
-    console.warn('   Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS in .env');
+    console.warn("   Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS in .env");
     return null;
   }
-  
-  // Check if using placeholder values
-  if (emailUser.includes('your_email') || emailPass.includes('your_app_password')) {
-    console.warn('⚠️  Email service using placeholder values!');
-    console.warn('   Update EMAIL_USER and EMAIL_PASS with real values');
+
+  // Clean and validate EMAIL_HOST
+  emailHost = emailHost.trim();
+
+  // Check for common EMAIL_HOST issues
+  if (
+    emailHost.includes("your_host") ||
+    emailHost.includes("smtp.example.com")
+  ) {
+    console.warn("⚠️  Email service using placeholder EMAIL_HOST!");
+    console.warn("   Current EMAIL_HOST:", emailHost);
+    console.warn(
+      "   Update EMAIL_HOST with real SMTP server (e.g., smtp.gmail.com)"
+    );
     return null;
   }
-  
+
+  // Check for protocol prefix (shouldn't be there)
+  if (emailHost.startsWith("http://") || emailHost.startsWith("https://")) {
+    console.warn("⚠️  EMAIL_HOST should not include protocol!");
+    console.warn("   Current EMAIL_HOST:", emailHost);
+    console.warn("   Remove http:// or https:// prefix");
+    console.warn("   Use: smtp.gmail.com (not https://smtp.gmail.com)");
+    return null;
+  }
+
+  // Check for common typos in Gmail host
+  const commonTypos = {
+    "smtp.gmial.com": "smtp.gmail.com",
+    "smtp.gmai.com": "smtp.gmail.com",
+    "smtp.gmal.com": "smtp.gmail.com",
+    "smtp.gmaiil.com": "smtp.gmail.com",
+  };
+
+  if (commonTypos[emailHost.toLowerCase()]) {
+    console.warn("⚠️  EMAIL_HOST typo detected!");
+    console.warn("   Current EMAIL_HOST:", emailHost);
+    console.warn("   Did you mean:", commonTypos[emailHost.toLowerCase()]);
+    console.warn("   Fix the typo in your .env file");
+    return null;
+  }
+
+  // Validate hostname format (basic check)
+  const hostnameRegex =
+    /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+  if (!hostnameRegex.test(emailHost)) {
+    console.warn("⚠️  Invalid EMAIL_HOST format!");
+    console.warn("   Current EMAIL_HOST:", emailHost);
+    console.warn(
+      "   EMAIL_HOST should be a valid hostname (e.g., smtp.gmail.com)"
+    );
+    console.warn("   Check for typos, spaces, or invalid characters");
+    return null;
+  }
+
+  // Check if using placeholder values for user/pass
+  if (
+    emailUser.includes("your_email") ||
+    emailPass.includes("your_app_password")
+  ) {
+    console.warn("⚠️  Email service using placeholder values!");
+    console.warn("   Update EMAIL_USER and EMAIL_PASS with real values");
+    return null;
+  }
+
   try {
     transporter = nodemailer.createTransport({
       host: emailHost,
@@ -43,15 +100,19 @@ const createTransporter = () => {
       greetingTimeout: 5000,
       socketTimeout: 5000,
     });
-    
-    console.log('✅ Email transporter created');
-    console.log('   Host:', emailHost);
-    console.log('   Port:', process.env.EMAIL_PORT || "587");
-    console.log('   User:', emailUser);
-    
+
+    console.log("✅ Email transporter created");
+    console.log("   Host:", emailHost);
+    console.log("   Port:", process.env.EMAIL_PORT || "587");
+    console.log("   User:", emailUser);
+    console.log(
+      "   Secure:",
+      process.env.EMAIL_PORT === "465" ? "Yes (SSL)" : "No (TLS)"
+    );
+
     return transporter;
   } catch (error) {
-    console.error('❌ Failed to create email transporter:', error.message);
+    console.error("❌ Failed to create email transporter:", error.message);
     return null;
   }
 };
@@ -59,53 +120,65 @@ const createTransporter = () => {
 // Test email connection
 export const testEmailConnection = async () => {
   const transport = createTransporter();
-  
+
   if (!transport) {
     return {
       success: false,
-      message: 'Email service not configured'
+      message: "Email service not configured",
     };
   }
-  
+
   try {
     await transport.verify();
     return {
       success: true,
-      message: 'Email connection verified successfully'
+      message: "Email connection verified successfully",
     };
   } catch (error) {
-    console.error('❌ Email connection test failed:', error.message);
+    console.error("❌ Email connection test failed:", error.message);
     return {
       success: false,
       message: `Email connection failed: ${error.message}`,
-      error: error.message
+      error: error.message,
     };
   }
 };
 
 export const sendOTPEmail = async (email, code, type = "password_reset") => {
   // Always log the OTP code first - critical for debugging
-  console.log('');
-  console.log('═══════════════════════════════════════════════════════');
-  console.log('📧 PASSWORD RESET OTP');
-  console.log('═══════════════════════════════════════════════════════');
-  console.log('   Email:', email);
-  console.log('   OTP Code:', code);
-  console.log('   Expires in: 10 minutes');
-  console.log('═══════════════════════════════════════════════════════');
-  console.log('');
-  
+  console.log("");
+  console.log("═══════════════════════════════════════════════════════");
+  console.log("📧 PASSWORD RESET OTP - sendOTPEmail() CALLED");
+  console.log("═══════════════════════════════════════════════════════");
+  console.log("   Email:", email);
+  console.log("   OTP Code:", code);
+  console.log("   Expires in: 10 minutes");
+  console.log("   Type:", type);
+  console.log("═══════════════════════════════════════════════════════");
+  console.log("");
+
+  console.log("🔍 Checking email configuration...");
   const transport = createTransporter();
-  
+
+  console.log("🔍 Transport result:", transport ? "CREATED" : "NULL");
+
   // If email is not configured, log the OTP and return immediately
   if (!transport) {
-    console.log('⚠️  [EMAIL NOT CONFIGURED]');
-    console.log('   OTP Code:', code);
-    console.log('   Check backend logs on Render to see this code');
-    console.log('   Configure EMAIL_HOST, EMAIL_USER, EMAIL_PASS in .env');
+    console.log("");
+    console.log("⚠️  [EMAIL NOT CONFIGURED - OTP CODE BELOW]");
+    console.log("═══════════════════════════════════════════════════════");
+    console.log("   OTP Code:", code);
+    console.log("   Email:", email);
+    console.log("   Use this code to reset password (expires in 10 minutes)");
+    console.log("═══════════════════════════════════════════════════════");
+    console.log("   Configure EMAIL_HOST, EMAIL_USER, EMAIL_PASS in .env");
+    console.log("   Or check Render Dashboard → Environment variables");
+    console.log("");
     return true;
   }
-  
+
+  console.log("✅ Email transporter available, proceeding to send email...");
+
   // Send email - use async/await properly
   try {
     const subject =
@@ -155,43 +228,47 @@ If you didn't request this password reset, please ignore this email.
 
     // Send email with proper error handling
     const info = await transport.sendMail({
-      from: `"SmartSpend+" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      from: `"SmartSpend+" <${
+        process.env.EMAIL_FROM || process.env.EMAIL_USER
+      }>`,
       to: email,
       subject,
       text,
       html,
     });
-    
-    console.log('✅ Email sent successfully!');
-    console.log('   Message ID:', info.messageId);
-    console.log('   To:', email);
+
+    console.log("✅ Email sent successfully!");
+    console.log("   Message ID:", info.messageId);
+    console.log("   To:", email);
     return true;
   } catch (error) {
-    console.error('❌ Email sending failed!');
-    console.error('   Error:', error.message);
-    console.error('   Code:', error.code);
-    console.error('   Command:', error.command);
-    console.error('');
-    console.error('🔧 Troubleshooting:');
-    
-    if (error.code === 'EAUTH') {
-      console.error('   → Authentication failed');
-      console.error('   → Check EMAIL_USER and EMAIL_PASS');
-      console.error('   → For Gmail: Use App Password, not regular password');
-      console.error('   → Generate App Password: https://myaccount.google.com/apppasswords');
-    } else if (error.code === 'ECONNECTION') {
-      console.error('   → Connection failed');
-      console.error('   → Check EMAIL_HOST and EMAIL_PORT');
-      console.error('   → Check firewall/network settings');
-    } else if (error.code === 'ETIMEDOUT') {
-      console.error('   → Connection timeout');
-      console.error('   → Check network connection');
+    console.error("❌ Email sending failed!");
+    console.error("   Error:", error.message);
+    console.error("   Code:", error.code);
+    console.error("   Command:", error.command);
+    console.error("");
+    console.error("🔧 Troubleshooting:");
+
+    if (error.code === "EAUTH") {
+      console.error("   → Authentication failed");
+      console.error("   → Check EMAIL_USER and EMAIL_PASS");
+      console.error("   → For Gmail: Use App Password, not regular password");
+      console.error(
+        "   → Generate App Password: https://myaccount.google.com/apppasswords"
+      );
+    } else if (error.code === "ECONNECTION") {
+      console.error("   → Connection failed");
+      console.error("   → Check EMAIL_HOST and EMAIL_PORT");
+      console.error("   → Check firewall/network settings");
+    } else if (error.code === "ETIMEDOUT") {
+      console.error("   → Connection timeout");
+      console.error("   → Check network connection");
     }
-    
-    console.error('');
-    console.error('📧 [EMAIL FAILED] OTP Code for', email, ':', code);
-    console.error('   Check backend logs on Render to see this code');
-    
+
+    console.error("");
+    console.error("📧 [EMAIL FAILED] OTP Code for", email, ":", code);
+    console.error("   Check backend logs on Render to see this code");
+
     // Still return true so the flow continues - OTP is saved in database
     return true;
   }

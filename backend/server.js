@@ -17,6 +17,7 @@ import scheduledExpenseRoutes from "./routes/scheduledExpense.routes.js";
 import savingsGoalRoutes from "./routes/savingsGoal.routes.js";
 import reportRoutes from "./routes/report.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
+import testRoutes from "./routes/test.routes.js";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler.middleware.js";
@@ -88,6 +89,7 @@ app.use("/api/scheduled-expenses", scheduledExpenseRoutes);
 app.use("/api/savings-goals", savingsGoalRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/test", testRoutes); // Test routes for debugging
 
 // 404 handler (before error handler)
 app.use((req, res) => {
