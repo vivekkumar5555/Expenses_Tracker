@@ -125,20 +125,24 @@ export const requestPasswordReset = async (req, res, next) => {
 
     console.log("📧 Password reset requested for:", email);
 
-    // Check if Prisma is properly initialized
-    if (!prisma || !prisma.user) {
-      console.error("❌ Prisma client not initialized properly");
+    // Find user with timeout
+    let user;
+    try {
+      user = await Promise.race([
+        prisma.user.findUnique({ where: { email } }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Database timeout")), 10000)
+        ),
+      ]);
+    } catch (dbError) {
+      console.error("❌ Database error:", dbError.message);
       return res.status(500).json({
-        message: "Server configuration error. Please try again later.",
+        message: "Database connection error. Please try again later.",
       });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
     if (!user) {
-      // Don't reveal if user exists - but still return success
+      // Don't reveal if user exists - return success anyway
       console.log("ℹ️  User not found, returning success anyway");
       return res.json({ message: "If email exists, reset code has been sent" });
     }
@@ -149,40 +153,40 @@ export const requestPasswordReset = async (req, res, next) => {
 
     console.log("🔐 Generated OTP for user:", user.id);
 
-    // Check if otpCode model exists
-    if (!prisma.oTPCode) {
-      console.error("❌ OTPCode model not found in Prisma client");
-      console.error(
-        "   Available models:",
-        Object.keys(prisma).filter(
-          (k) => !k.startsWith("_") && !k.startsWith("$")
-        )
-      );
+    // Save OTP to database
+    try {
+      await prisma.oTPCode.create({
+        data: {
+          userId: user.id,
+          code,
+          type: "password_reset",
+          expiresAt,
+        },
+      });
+      console.log("💾 OTP saved to database");
+    } catch (otpError) {
+      console.error("❌ Failed to save OTP:", otpError.message);
       return res.status(500).json({
-        message: "Server configuration error. Please try again later.",
+        message: "Failed to generate reset code. Please try again.",
       });
     }
 
-    // Save OTP
-    await prisma.oTPCode.create({
-      data: {
-        userId: user.id,
-        code,
-        type: "password_reset",
-        expiresAt,
-      },
-    });
-
-    console.log("💾 OTP saved to database");
-
     // Send email (won't throw even if email fails)
-    await sendOTPEmail(user.email, code, "password_reset");
+    try {
+      await sendOTPEmail(user.email, code, "password_reset");
+      console.log("📧 Email sent (or logged if not configured)");
+    } catch (emailError) {
+      console.error("⚠️  Email sending failed:", emailError.message);
+      // Still return success - OTP is in database
+    }
 
     res.json({ message: "If email exists, reset code has been sent" });
   } catch (error) {
     console.error("❌ Password reset error:", error.message);
     console.error("   Stack:", error.stack);
-    next(error);
+    res.status(500).json({
+      message: "An error occurred. Please try again later.",
+    });
   }
 };
 

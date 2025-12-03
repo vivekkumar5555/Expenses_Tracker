@@ -1,7 +1,10 @@
+// Load environment variables FIRST - before any other imports
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import dotenv from "dotenv";
 import prisma from "./lib/prisma.js";
 
 // Import routes
@@ -17,8 +20,6 @@ import settingsRoutes from "./routes/settings.routes.js";
 
 // Import middleware
 import { errorHandler } from "./middleware/errorHandler.middleware.js";
-
-dotenv.config();
 
 const app = express();
 
@@ -58,8 +59,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", message: "SmartSpend+ API is running" });
+app.get("/api/health", async (req, res) => {
+  try {
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({
+      status: "ok",
+      message: "SmartSpend+ API is running",
+      database: "connected",
+    });
+  } catch (error) {
+    console.error("Health check failed:", error.message);
+    res.status(500).json({
+      status: "error",
+      message: "API running but database connection failed",
+      database: "disconnected",
+    });
+  }
 });
 
 // Routes
@@ -83,10 +99,43 @@ app.use((req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || "development"}`);
-});
+// Test database connection before starting server
+const startServer = async () => {
+  try {
+    console.log("🔌 Testing database connection...");
+    await prisma.$connect();
+    console.log("✅ Database connected successfully");
+
+    app.listen(PORT, () => {
+      console.log("");
+      console.log("╔════════════════════════════════════════════════════════╗");
+      console.log("║         SmartSpend+ Backend Server Started             ║");
+      console.log("╠════════════════════════════════════════════════════════╣");
+      console.log(
+        `║  🚀 Port: ${PORT}                                        ║`
+      );
+      console.log(
+        `║  📊 Environment: ${(process.env.NODE_ENV || "development").padEnd(
+          30
+        )}  ║`
+      );
+      console.log(
+        "║  ✅ Database: Connected                                 ║"
+      );
+      console.log("╚════════════════════════════════════════════════════════╝");
+      console.log("");
+    });
+  } catch (error) {
+    console.error("❌ Failed to connect to database:", error.message);
+    console.error("   Check your DATABASE_URL environment variable");
+    // Still start server but log the error
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT} (DATABASE NOT CONNECTED)`);
+    });
+  }
+};
+
+startServer();
 
 // Graceful shutdown
 process.on("SIGTERM", async () => {
