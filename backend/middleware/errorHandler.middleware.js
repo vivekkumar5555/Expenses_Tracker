@@ -1,5 +1,12 @@
 export const errorHandler = (err, req, res, next) => {
-  console.error('Error:', err);
+  // Don't handle errors if response was already sent
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  console.error('Error Handler:', err.message);
+  console.error('   Code:', err.code);
+  console.error('   Path:', req.path);
 
   // Prisma errors
   if (err.code === 'P2002') {
@@ -12,6 +19,13 @@ export const errorHandler = (err, req, res, next) => {
   if (err.code === 'P2025') {
     return res.status(404).json({
       message: 'Record not found'
+    });
+  }
+
+  // Database connection errors
+  if (err.code === 'P1001' || err.message?.includes('Can\'t reach database')) {
+    return res.status(503).json({
+      message: 'Database connection failed. Please try again later.'
     });
   }
 
@@ -36,10 +50,14 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Default error
-  res.status(err.status || 500).json({
+  // Default error - ensure response is sent
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
     message: err.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    ...(process.env.NODE_ENV === 'development' && { 
+      stack: err.stack,
+      code: err.code 
+    })
   });
 };
 

@@ -89,13 +89,14 @@ app.use("/api/savings-goals", savingsGoalRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/settings", settingsRoutes);
 
-// Error handler middleware (must be last)
-app.use(errorHandler);
-
-// 404 handler
+// 404 handler (before error handler)
 app.use((req, res) => {
+  console.log(`404 - Route not found: ${req.method} ${req.path}`);
   res.status(404).json({ message: "Route not found" });
 });
+
+// Error handler middleware (must be last)
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 

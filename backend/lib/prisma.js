@@ -1,15 +1,15 @@
 import { PrismaClient } from '@prisma/client';
 
-// Create Prisma Client with connection handling
+// Create Prisma Client with proper configuration
 const prismaClientSingleton = () => {
-  return new PrismaClient({
+  const client = new PrismaClient({
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-    datasources: {
-      db: {
-        url: process.env.DATABASE_URL,
-      },
-    },
   });
+  
+  // Handle connection errors gracefully
+  // Note: $on is for query events, errors are caught in try-catch
+  
+  return client;
 };
 
 // For Node.js global
