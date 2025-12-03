@@ -3,6 +3,11 @@ import Layout from '../components/Layout';
 import api from '../utils/axios';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
+import { useTranslation } from '../hooks/useTranslation';
+import { useLanguageCurrency } from '../contexts/LanguageCurrencyContext';
+import { useToast } from '../hooks/useToast';
+import Toast from '../components/Toast';
+import { AnimatePresence } from 'framer-motion';
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState([]);
@@ -23,6 +28,9 @@ export default function Expenses() {
   const [pagination, setPagination] = useState({});
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
+  const { t } = useTranslation();
+  const { formatCurrency } = useLanguageCurrency();
+  const { toast, showToast, hideToast } = useToast();
 
   useEffect(() => {
     fetchCategories();
@@ -67,9 +75,10 @@ export default function Expenses() {
       setEditingExpense(null);
       reset();
       fetchExpenses();
+      showToast(t('expenses.expenseSaved'), 'success');
     } catch (error) {
       console.error('Failed to save expense:', error);
-      alert(error.response?.data?.message || 'Failed to save expense');
+      showToast(error.response?.data?.message || t('expenses.expenseSaved'), 'error');
     }
   };
 
@@ -89,14 +98,15 @@ export default function Expenses() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this expense?')) return;
+    if (!window.confirm(t('expenses.confirmDelete'))) return;
 
     try {
       await api.delete(`/expenses/${id}`);
       fetchExpenses();
+      showToast(t('expenses.expenseDeleted'), 'success');
     } catch (error) {
       console.error('Failed to delete expense:', error);
-      alert('Failed to delete expense');
+      showToast(t('expenses.expenseDeleted'), 'error');
     }
   };
 
@@ -106,10 +116,21 @@ export default function Expenses() {
 
   return (
     <Layout>
+      <AnimatePresence>
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            duration={toast.duration}
+            onClose={hideToast}
+          />
+        )}
+      </AnimatePresence>
+      
       <div className="space-y-4 lg:space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h2 className="text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white">Expenses</h2>
+          <h2 className="text-2xl lg:text-3xl font-semibold text-gray-900 dark:text-white">{t('expenses.title')}</h2>
           <button
             onClick={() => {
               setEditingExpense(null);
@@ -118,7 +139,7 @@ export default function Expenses() {
             }}
             className="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors shadow-sm"
           >
-            + Add Expense
+            + {t('expenses.addExpense')}
           </button>
         </div>
 
@@ -126,33 +147,47 @@ export default function Expenses() {
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 lg:p-6 shadow-sm border border-gray-200 dark:border-gray-700 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <input
             type="text"
-            placeholder="Search..."
+            placeholder={t('common.search')}
             value={filters.search}
             onChange={(e) => handleFilterChange('search', e.target.value)}
             className="px-4 py-2.5 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
           />
-          <select
-            value={filters.categoryId}
-            onChange={(e) => handleFilterChange('categoryId', e.target.value)}
-            className="px-4 py-2.5 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
-          >
-            <option value="">All Categories</option>
-            {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
-          <select
-            value={filters.paymentMode}
-            onChange={(e) => handleFilterChange('paymentMode', e.target.value)}
-            className="px-4 py-2.5 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
-          >
-            <option value="">All Payment Modes</option>
+          <div className="relative">
+            <select
+              value={filters.categoryId}
+              onChange={(e) => handleFilterChange('categoryId', e.target.value)}
+              className="w-full px-4 py-2.5 pr-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all appearance-none cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 shadow-sm"
+            >
+              <option value="">{t('expenses.allCategories')}</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <svg className="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+          <div className="relative">
+            <select
+              value={filters.paymentMode}
+              onChange={(e) => handleFilterChange('paymentMode', e.target.value)}
+              className="w-full px-4 py-2.5 pr-10 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all appearance-none cursor-pointer hover:border-gray-400 dark:hover:border-gray-500 shadow-sm"
+            >
+              <option value="">{t('expenses.allPaymentModes')}</option>
             <option value="cash">Cash</option>
             <option value="card">Card</option>
             <option value="bank_transfer">Bank Transfer</option>
             <option value="digital_wallet">Digital Wallet</option>
             <option value="other">Other</option>
           </select>
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <svg className="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
           <input
             type="date"
             value={filters.startDate}
@@ -173,13 +208,13 @@ export default function Expenses() {
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700/50">
                   <tr>
-                    <th className="text-left p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300">Date</th>
-                    <th className="text-left p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300">Description</th>
-                    <th className="text-left p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden sm:table-cell">Category</th>
-                    <th className="text-left p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden md:table-cell">Vendor</th>
-                    <th className="text-left p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden lg:table-cell">Payment</th>
-                    <th className="text-right p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300">Amount</th>
-                    <th className="text-center p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+                    <th className="text-left p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300">{t('expenses.date')}</th>
+                    <th className="text-left p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300">{t('expenses.description')}</th>
+                    <th className="text-left p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden sm:table-cell">{t('expenses.category')}</th>
+                    <th className="text-left p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden md:table-cell">{t('expenses.vendor')}</th>
+                    <th className="text-left p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300 hidden lg:table-cell">{t('expenses.paymentMode')}</th>
+                    <th className="text-right p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300">{t('expenses.amount')}</th>
+                    <th className="text-center p-3 lg:p-4 text-xs lg:text-sm font-semibold text-gray-700 dark:text-gray-300">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -200,20 +235,20 @@ export default function Expenses() {
                       </td>
                       <td className="p-3 lg:p-4 text-sm text-gray-900 dark:text-gray-100 hidden md:table-cell truncate max-w-xs">{expense.vendor || '-'}</td>
                       <td className="p-3 lg:p-4 text-sm text-gray-900 dark:text-gray-100 hidden lg:table-cell capitalize">{expense.paymentMode}</td>
-                      <td className="p-3 lg:p-4 text-right text-sm font-semibold text-gray-900 dark:text-white">${expense.amount.toFixed(2)}</td>
+                      <td className="p-3 lg:p-4 text-right text-sm font-semibold text-gray-900 dark:text-white">{formatCurrency(expense.amount)}</td>
                       <td className="p-3 lg:p-4">
                         <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => handleEdit(expense)}
                             className="px-2 lg:px-3 py-1 text-xs lg:text-sm bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
                           >
-                            Edit
+                            {t('common.edit')}
                           </button>
                           <button
                             onClick={() => handleDelete(expense.id)}
                             className="px-2 lg:px-3 py-1 text-xs lg:text-sm bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                           >
-                            Delete
+                            {t('common.delete')}
                           </button>
                         </div>
                       </td>
@@ -224,7 +259,7 @@ export default function Expenses() {
             </div>
           ) : (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-              No expenses found
+              {t('common.noData')}
             </div>
           )}
 
@@ -240,14 +275,14 @@ export default function Expenses() {
                   disabled={pagination.page === 1}
                   className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-50"
                 >
-                  Previous
+                  {t('common.previous')}
                 </button>
                 <button
                   onClick={() => setFilters(prev => ({ ...prev, page: prev.page + 1 }))}
                   disabled={pagination.page === pagination.pages}
                   className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 disabled:opacity-50"
                 >
-                  Next
+                  {t('common.next')}
                 </button>
               </div>
             </div>
@@ -263,12 +298,12 @@ export default function Expenses() {
               className="card max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6 lg:p-8"
             >
               <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-white">
-                {editingExpense ? 'Edit Expense' : 'Add Expense'}
+                {editingExpense ? t('expenses.editExpense') : t('expenses.addExpense')}
               </h3>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Amount *</label>
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">{t('expenses.amount')} *</label>
                     <input
                       type="number"
                       step="0.01"
@@ -280,7 +315,7 @@ export default function Expenses() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Date *</label>
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">{t('expenses.date')} *</label>
                     <input
                       type="date"
                       {...register('date', { required: 'Date is required' })}
@@ -293,25 +328,32 @@ export default function Expenses() {
                 </div>
 
                 <div>
-                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Category *</label>
-                    <select
-                      {...register('categoryId', { required: 'Category is required' })}
-                      className="w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                    >
-                    <option value="">Select category</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.icon} {cat.name}
-                      </option>
-                    ))}
-                  </select>
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">{t('expenses.category')} *</label>
+                    <div className="relative">
+                      <select
+                        {...register('categoryId', { required: 'Category is required' })}
+                        className="w-full px-4 py-3 pr-10 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all appearance-none cursor-pointer hover:border-gray-300 dark:hover:border-gray-700 shadow-sm"
+                      >
+                        <option value="">{t('expenses.selectCategory')}</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.icon} {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
                   {errors.categoryId && (
                     <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.categoryId.message}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Description</label>
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">{t('expenses.description')}</label>
                   <input
                     type="text"
                     {...register('description')}
@@ -321,7 +363,7 @@ export default function Expenses() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Vendor</label>
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">{t('expenses.vendor')}</label>
                     <input
                       type="text"
                       {...register('vendor')}
@@ -329,22 +371,29 @@ export default function Expenses() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Payment Mode</label>
-                    <select
-                      {...register('paymentMode')}
-                      className="w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                    >
-                      <option value="cash">Cash</option>
-                      <option value="card">Card</option>
-                      <option value="bank_transfer">Bank Transfer</option>
-                      <option value="digital_wallet">Digital Wallet</option>
-                      <option value="other">Other</option>
-                    </select>
+                    <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">{t('expenses.paymentMode')}</label>
+                    <div className="relative">
+                      <select
+                        {...register('paymentMode')}
+                        className="w-full px-4 py-3 pr-10 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all appearance-none cursor-pointer hover:border-gray-300 dark:hover:border-gray-700 shadow-sm"
+                      >
+                        <option value="cash">{t('expenses.cash')}</option>
+                        <option value="card">{t('expenses.card')}</option>
+                        <option value="bank_transfer">{t('expenses.bankTransfer')}</option>
+                        <option value="digital_wallet">{t('expenses.digitalWallet')}</option>
+                        <option value="other">{t('expenses.other')}</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Notes</label>
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">{t('expenses.notes')}</label>
                   <textarea
                     {...register('notes')}
                     rows={3}
@@ -353,7 +402,7 @@ export default function Expenses() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Tags (comma separated)</label>
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">{t('expenses.tags')}</label>
                   <input
                     type="text"
                     {...register('tags')}
@@ -367,7 +416,7 @@ export default function Expenses() {
                     type="submit"
                     className="flex-1 py-3.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold transition-all duration-200 shadow-sm hover:shadow-md"
                   >
-                    {editingExpense ? 'Update' : 'Create'}
+                    {editingExpense ? t('common.save') : t('common.add')}
                   </button>
                   <button
                     type="button"
@@ -378,7 +427,7 @@ export default function Expenses() {
                     }}
                     className="flex-1 py-3.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               </form>

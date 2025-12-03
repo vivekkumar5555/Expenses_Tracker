@@ -4,11 +4,15 @@ import api from '../utils/axios';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import HeroSection from '../components/ThreeDScene';
+import { useTranslation } from '../hooks/useTranslation';
+import { useLanguageCurrency } from '../contexts/LanguageCurrencyContext';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [recentExpenses, setRecentExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
+  const { formatCurrency } = useLanguageCurrency();
 
   useEffect(() => {
     fetchData();
@@ -54,9 +58,9 @@ export default function Dashboard() {
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Total Expenses</p>
+                <p className="text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">{t('dashboard.totalExpenses')}</p>
                 <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white truncate">
-                  ${stats?.summary?.totalExpenses?.toFixed(2) || '0.00'}
+                  {formatCurrency(stats?.summary?.totalExpenses || 0)}
                 </p>
               </div>
               <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center flex-shrink-0 ml-2">
@@ -75,7 +79,7 @@ export default function Dashboard() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Total Transactions</p>
+                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">{t('dashboard.totalTransactions')}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats?.summary?.totalCount || 0}</p>
               </div>
               <div className="w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
@@ -94,9 +98,9 @@ export default function Dashboard() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Average Expense</p>
+                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">{t('dashboard.averageExpense')}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                  ${stats?.summary?.averageExpense?.toFixed(2) || '0.00'}
+                  {formatCurrency(stats?.summary?.averageExpense || 0)}
                 </p>
               </div>
               <div className="w-14 h-14 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center">
@@ -115,7 +119,7 @@ export default function Dashboard() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">Categories</p>
+                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-1">{t('dashboard.categories')}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats?.categoryBreakdown?.length || 0}</p>
               </div>
               <div className="w-14 h-14 bg-accent-100 dark:bg-accent-900/30 rounded-xl flex items-center justify-center">
@@ -135,7 +139,7 @@ export default function Dashboard() {
             animate={{ opacity: 1, scale: 1 }}
             className="card p-6"
           >
-            <h3 className="text-base sm:text-lg font-bold mb-4 sm:mb-6 text-gray-900 dark:text-white">Category Breakdown</h3>
+            <h3 className="text-base sm:text-lg font-bold mb-4 sm:mb-6 text-gray-900 dark:text-white">{t('dashboard.categoryBreakdown')}</h3>
             {stats?.categoryBreakdown?.length > 0 ? (
               <ResponsiveContainer width="100%" height={250} className="sm:h-[300px]">
                 <PieChart>
@@ -153,12 +157,12 @@ export default function Dashboard() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => `$${value.toFixed(2)}`} />
+                  <Tooltip formatter={(value) => formatCurrency(value)} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-                No data available
+                {t('common.noData')}
               </div>
             )}
           </motion.div>
@@ -174,14 +178,14 @@ export default function Dashboard() {
             animate={{ opacity: 1, y: 0 }}
             className="card p-6"
           >
-            <h3 className="text-base sm:text-lg font-bold mb-4 sm:mb-6 text-gray-900 dark:text-white">Monthly Trend</h3>
+            <h3 className="text-base sm:text-lg font-bold mb-4 sm:mb-6 text-gray-900 dark:text-white">{t('dashboard.monthlyTrend')}</h3>
             <ResponsiveContainer width="100%" height={250} className="sm:h-[300px]">
               <BarChart data={stats.monthlyTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="month" stroke="#6b7280" />
                 <YAxis stroke="#6b7280" />
                 <Tooltip 
-                  formatter={(value) => `$${value.toFixed(2)}`}
+                  formatter={(value) => formatCurrency(value)}
                   contentStyle={{ 
                     backgroundColor: 'white', 
                     border: '1px solid #e5e7eb',
@@ -200,7 +204,7 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="card p-6"
         >
-          <h3 className="text-base sm:text-lg font-bold mb-4 sm:mb-6 text-gray-900 dark:text-white">Recent Expenses</h3>
+            <h3 className="text-base sm:text-lg font-bold mb-4 sm:mb-6 text-gray-900 dark:text-white">{t('dashboard.recentExpenses')}</h3>
           {recentExpenses.length > 0 ? (
             <div className="space-y-3">
               {recentExpenses.map((expense) => (
@@ -220,14 +224,14 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <div className="text-right ml-4 flex-shrink-0">
-                    <p className="font-bold text-lg text-gray-900 dark:text-white">${expense.amount.toFixed(2)}</p>
+                    <p className="font-bold text-lg text-gray-900 dark:text-white">{formatCurrency(expense.amount)}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{expense.paymentMode}</p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400 text-center py-8">No recent expenses</p>
+            <p className="text-gray-500 dark:text-gray-400 text-center py-8">{t('dashboard.noRecentExpenses')}</p>
           )}
         </motion.div>
       </div>

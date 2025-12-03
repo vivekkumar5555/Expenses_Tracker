@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTranslation } from '../hooks/useTranslation';
+import LanguageSwitcher from './LanguageSwitcher';
+import CurrencySwitcher from './CurrencySwitcher';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DashboardIcon,
@@ -26,6 +29,7 @@ const Layout = ({ children }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation();
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -47,15 +51,15 @@ const Layout = ({ children }) => {
   }, []);
 
   const menuItems = [
-    { path: '/', label: 'Dashboard', icon: DashboardIcon },
-    { path: '/expenses', label: 'Expenses', icon: ExpensesIcon },
-    { path: '/categories', label: 'Categories', icon: CategoriesIcon },
-    { path: '/budgets', label: 'Budgets', icon: BudgetsIcon },
-    { path: '/recurring-expenses', label: 'Recurring', icon: RecurringIcon },
-    { path: '/scheduled-expenses', label: 'Scheduled', icon: ScheduledIcon },
-    { path: '/savings-goals', label: 'Savings', icon: SavingsIcon },
-    { path: '/reports', label: 'Reports', icon: ReportsIcon },
-    { path: '/settings', label: 'Settings', icon: SettingsIcon },
+    { path: '/', label: t('navigation.dashboard'), icon: DashboardIcon },
+    { path: '/expenses', label: t('navigation.expenses'), icon: ExpensesIcon },
+    { path: '/categories', label: t('navigation.categories'), icon: CategoriesIcon },
+    { path: '/budgets', label: t('navigation.budgets'), icon: BudgetsIcon },
+    { path: '/recurring-expenses', label: t('navigation.recurring'), icon: RecurringIcon },
+    { path: '/scheduled-expenses', label: t('navigation.scheduled'), icon: ScheduledIcon },
+    { path: '/savings-goals', label: t('navigation.savings'), icon: SavingsIcon },
+    { path: '/reports', label: t('navigation.reports'), icon: ReportsIcon },
+    { path: '/settings', label: t('navigation.settings'), icon: SettingsIcon },
   ];
 
   const handleLogout = () => {
@@ -126,7 +130,7 @@ const Layout = ({ children }) => {
           onClick={handleLogout}
           className="w-full px-4 py-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 transition-colors text-sm font-semibold"
         >
-          Sign Out
+          {t('navigation.signOut')}
         </button>
       </div>
     </div>
@@ -153,12 +157,16 @@ const Layout = ({ children }) => {
               <span className="text-lg font-bold text-gray-900 dark:text-white">SmartSpend</span>
             </Link>
           </div>
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-          </button>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <CurrencySwitcher />
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -200,7 +208,9 @@ const Layout = ({ children }) => {
               <h1 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
                 {menuItems.find(item => item.path === location.pathname)?.label || 'Dashboard'}
               </h1>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
+                <LanguageSwitcher className="hidden sm:block" />
+                <CurrencySwitcher className="hidden sm:block" />
                 <button
                   onClick={toggleTheme}
                   className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
