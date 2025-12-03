@@ -7,7 +7,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react({
+      jsxRuntime: "automatic",
+    }),
+  ],
   server: {
     port: 3000,
     host: "0.0.0.0",
@@ -15,7 +19,9 @@ export default defineConfig({
     open: false,
     proxy: {
       "/api": {
-        target: "https://expenses-tracker-server-mvkm.onrender.com",
+        target:
+          "https://expenses-tracker-server-mvkm.onrender.com" ||
+          "http://localhost:5000",
         changeOrigin: true,
         secure: false,
         ws: true,
@@ -26,6 +32,7 @@ export default defineConfig({
     include: [
       "react",
       "react-dom",
+      "react/jsx-runtime",
       "react-router-dom",
       "three",
       "@react-three/fiber",
@@ -56,17 +63,20 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
+          // CRITICAL: Keep React and react-dom together - they must be in the same chunk
+          if (
+            id.includes("node_modules/react/") ||
+            id.includes("node_modules/react-dom/")
+          ) {
+            return "react-vendor";
+          }
+          // React Router must be with React
+          if (id.includes("react-router")) {
+            return "react-vendor";
+          }
           // Separate three.js and related libraries
           if (id.includes("three") || id.includes("@react-three")) {
             return "three-vendor";
-          }
-          // Separate react libraries
-          if (
-            id.includes("react") ||
-            id.includes("react-dom") ||
-            id.includes("react-router")
-          ) {
-            return "react-vendor";
           }
           // Separate other large dependencies
           if (id.includes("node_modules")) {
@@ -97,5 +107,6 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+    dedupe: ["react", "react-dom"],
   },
 });
