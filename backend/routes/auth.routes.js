@@ -10,6 +10,7 @@ import {
 } from '../controllers/auth.controller.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { validate } from '../middleware/validation.middleware.js';
+import { testEmailConnection } from '../services/email.service.js';
 
 const router = express.Router();
 
@@ -40,6 +41,12 @@ const resetPasswordValidation = [
   body('newPassword').isLength({ min: 6 })
 ];
 
+// Test email endpoint (for debugging)
+router.get('/test-email', async (req, res) => {
+  const result = await testEmailConnection();
+  res.json(result);
+});
+
 // Routes
 router.post('/register', registerValidation, validate, register);
 router.post('/login', loginValidation, validate, login);
@@ -49,6 +56,3 @@ router.post('/reset-password', resetPasswordValidation, validate, resetPassword)
 router.get('/me', authenticate, getMe);
 
 export default router;
-
-
-

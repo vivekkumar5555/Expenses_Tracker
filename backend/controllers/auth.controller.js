@@ -119,6 +119,17 @@ export const login = async (req, res, next) => {
   }
 };
 
+/**
+ * Request Password Reset
+ *
+ * Flow:
+ * 1. User submits email
+ * 2. Generate 6-digit OTP
+ * 3. Save OTP to database (expires in 10 minutes)
+ * 4. Invalidate any existing unused OTPs for this user
+ * 5. Send OTP via email (non-blocking)
+ * 6. Return success (don't reveal if user exists)
+ */
 export const requestPasswordReset = async (req, res) => {
   console.log("📧 Password reset request received");
   console.log("   Email:", req.body?.email);
@@ -132,16 +143,17 @@ export const requestPasswordReset = async (req, res) => {
 
     console.log("📧 Processing password reset for:", email);
 
-    // Find user - simple query without timeout wrapper
+    // Find user
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: email.toLowerCase().trim() },
     });
 
+    // Always return success - don't reveal if user exists (security best practice)
     if (!user) {
-      // Don't reveal if user exists - return success anyway
       console.log("ℹ️  User not found, returning success anyway");
       return res.status(200).json({
-        message: "If email exists, reset code has been sent",
+        message:
+          "If an account exists with this email, a reset code has been sent.",
       });
     }
 
@@ -153,7 +165,19 @@ export const requestPasswordReset = async (req, res) => {
 
     console.log("🔐 Generated OTP code");
 
-    // Save OTP to database
+    // Invalidate any existing unused OTPs for this user (security: prevent multiple valid OTPs)
+    await prisma.oTPCode.updateMany({
+      where: {
+        userId: user.id,
+        type: "password_reset",
+        used: false,
+      },
+      data: {
+        used: true, // Mark as used so only the new OTP is valid
+      },
+    });
+
+    // Save new OTP to database
     await prisma.oTPCode.create({
       data: {
         userId: user.id,
@@ -164,10 +188,9 @@ export const requestPasswordReset = async (req, res) => {
     });
 
     console.log("💾 OTP saved to database successfully");
-    console.log("🔑 OTP Code:", code); // Always log the code
+    console.log("🔑 OTP Code:", code); // Always log for debugging
 
     // Send email in background - completely non-blocking
-    // Don't await - let it run in background
     sendOTPEmail(user.email, code, "password_reset").catch(() => {
       // Already handled in email service
     });
@@ -175,7 +198,8 @@ export const requestPasswordReset = async (req, res) => {
     // Return success immediately - don't wait for email
     console.log("✅ Password reset request completed successfully");
     return res.status(200).json({
-      message: "If email exists, reset code has been sent",
+      message:
+        "If an account exists with this email, a reset code has been sent.",
     });
   } catch (error) {
     console.error("❌ Password reset error:", error.message);
@@ -190,45 +214,72 @@ export const requestPasswordReset = async (req, res) => {
   }
 };
 
+/**
+ * Verify OTP Code
+ *
+ * Flow:
+ * 1. User submits email + 6-digit OTP code
+ * 2. Find user by email
+ * 3. Find valid, unused, non-expired OTP
+ * 4. Mark OTP as used
+ * 5. Generate JWT reset token (expires in 15 minutes)
+ * 6. Return reset token to frontend
+ */
 export const verifyOTP = async (req, res, next) => {
   try {
     const { email, code } = req.body;
 
+    if (!email || !code) {
+      return res.status(400).json({ message: "Email and code are required" });
+    }
+
+    console.log("🔍 Verifying OTP for:", email);
+
+    // Find user
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: email.toLowerCase().trim() },
     });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Find valid OTP
     const otpRecord = await prisma.oTPCode.findFirst({
       where: {
         userId: user.id,
-        code,
+        code: code.trim(),
         type: "password_reset",
         used: false,
         expiresAt: {
-          gt: new Date(),
+          gt: new Date(), // Not expired
         },
+      },
+      orderBy: {
+        createdAt: "desc", // Get the most recent OTP
       },
     });
 
     if (!otpRecord) {
-      return res.status(400).json({ message: "Invalid or expired code" });
+      console.log("❌ Invalid or expired OTP");
+      return res.status(400).json({
+        message: "Invalid or expired code. Please request a new code.",
+      });
     }
 
-    // Mark as used
+    // Mark OTP as used (prevent reuse)
     await prisma.oTPCode.update({
       where: { id: otpRecord.id },
       data: { used: true },
     });
 
-    // Generate temporary token for password reset
+    console.log("✅ OTP verified successfully");
+
+    // Generate temporary reset token (JWT)
     const resetToken = jwt.sign(
       { userId: user.id, type: "password_reset" },
       process.env.JWT_SECRET,
-      { expiresIn: "15m" }
+      { expiresIn: "15m" } // Short expiration for security
     );
 
     res.json({
@@ -236,15 +287,41 @@ export const verifyOTP = async (req, res, next) => {
       resetToken,
     });
   } catch (error) {
+    console.error("❌ OTP verification error:", error.message);
     next(error);
   }
 };
 
+/**
+ * Reset Password
+ *
+ * Flow:
+ * 1. User submits resetToken (JWT) + newPassword
+ * 2. Verify JWT token (check expiration and type)
+ * 3. Hash new password
+ * 4. Update user password in database
+ * 5. Optionally: Invalidate all user sessions (logout everywhere)
+ * 6. Return success
+ */
 export const resetPassword = async (req, res, next) => {
   try {
     const { resetToken, newPassword } = req.body;
 
-    // Verify token
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({
+        message: "Reset token and new password are required",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: "Password must be at least 6 characters long",
+      });
+    }
+
+    console.log("🔐 Processing password reset");
+
+    // Verify JWT token
     let decoded;
     try {
       decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
@@ -252,7 +329,10 @@ export const resetPassword = async (req, res, next) => {
         return res.status(400).json({ message: "Invalid token type" });
       }
     } catch (error) {
-      return res.status(400).json({ message: "Invalid or expired token" });
+      console.log("❌ Invalid or expired reset token");
+      return res.status(400).json({
+        message: "Invalid or expired reset token. Please request a new code.",
+      });
     }
 
     // Hash new password
@@ -264,8 +344,26 @@ export const resetPassword = async (req, res, next) => {
       data: { password: hashedPassword },
     });
 
-    res.json({ message: "Password reset successfully" });
+    console.log("✅ Password reset successfully for user:", decoded.userId);
+
+    // Clean up any remaining unused OTPs for this user
+    await prisma.oTPCode.updateMany({
+      where: {
+        userId: decoded.userId,
+        type: "password_reset",
+        used: false,
+      },
+      data: {
+        used: true,
+      },
+    });
+
+    res.json({
+      message:
+        "Password reset successfully. You can now login with your new password.",
+    });
   } catch (error) {
+    console.error("❌ Password reset error:", error.message);
     next(error);
   }
 };
