@@ -33,7 +33,9 @@ export default defineConfig({
       "react",
       "react-dom",
       "react/jsx-runtime",
+      "react/jsx-dev-runtime",
       "react-router-dom",
+      "react-hook-form",
       "three",
       "@react-three/fiber",
       "@react-three/drei",
@@ -48,6 +50,7 @@ export default defineConfig({
         "top-level-await": true,
       },
     },
+    force: true,
   },
   build: {
     target: "es2020",
@@ -55,7 +58,7 @@ export default defineConfig({
     assetsDir: "assets",
     minify: "esbuild",
     sourcemap: false,
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 2000,
     commonjsOptions: {
       include: [/node_modules/],
       transformMixedEsModules: true,
@@ -63,22 +66,32 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // CRITICAL: Keep React and react-dom together - they must be in the same chunk
+          // CRITICAL: Keep ALL React ecosystem together to prevent circular deps
           if (
             id.includes("node_modules/react/") ||
-            id.includes("node_modules/react-dom/")
+            id.includes("node_modules/react-dom/") ||
+            id.includes("node_modules/react-router") ||
+            id.includes("node_modules/react-hook-form") ||
+            id.includes("node_modules/scheduler/")
           ) {
             return "react-vendor";
           }
-          // React Router must be with React
-          if (id.includes("react-router")) {
-            return "react-vendor";
-          }
-          // Separate three.js and related libraries
-          if (id.includes("three") || id.includes("@react-three")) {
+          // Keep Three.js ecosystem together
+          if (
+            id.includes("node_modules/three/") ||
+            id.includes("node_modules/@react-three")
+          ) {
             return "three-vendor";
           }
-          // Separate other large dependencies
+          // Keep animation libraries together
+          if (id.includes("node_modules/framer-motion")) {
+            return "animation-vendor";
+          }
+          // Keep chart libraries together
+          if (id.includes("node_modules/recharts")) {
+            return "chart-vendor";
+          }
+          // All other vendor code in one chunk to avoid circular deps
           if (id.includes("node_modules")) {
             return "vendor";
           }
@@ -86,11 +99,18 @@ export default defineConfig({
         chunkFileNames: "assets/js/[name]-[hash].js",
         entryFileNames: "assets/js/[name]-[hash].js",
         assetFileNames: "assets/[ext]/[name]-[hash].[ext]",
+        // Ensure proper chunk loading order
+        experimentalMinChunkSize: 20000,
       },
       onwarn(warning, warn) {
-        // Suppress specific warnings
+        // Suppress specific warnings that don't affect functionality
         if (warning.code === "MODULE_LEVEL_DIRECTIVE") return;
         if (warning.code === "THIS_IS_UNDEFINED") return;
+        if (warning.code === "CIRCULAR_DEPENDENCY") {
+          // Log but don't fail on circular dependencies
+          console.warn(`Circular dependency: ${warning.message}`);
+          return;
+        }
         warn(warning);
       },
     },
