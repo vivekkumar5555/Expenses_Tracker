@@ -58,8 +58,10 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`📁 Serving static files from ${distPath}`);
+  console.log(`🚀 Frontend server running on port ${PORT}`);
+  console.log(`📁 Serving static files from: ${distPath}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`✅ SPA fallback enabled - all routes will serve index.html`);
+  console.log(`🔗 Visit: http://localhost:${PORT}`);
 });
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import axios from 'axios';
+import api from '../utils/axios';
 import { motion } from 'framer-motion';
 
 export default function ForgotPassword() {
@@ -14,7 +14,7 @@ export default function ForgotPassword() {
     try {
       setLoading(true);
       setError('');
-      await axios.post('/api/auth/forgot-password', data);
+      await api.post('/auth/forgot-password', data);
       setSuccess(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send reset code');

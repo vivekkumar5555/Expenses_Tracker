@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import axios from 'axios';
+import api from '../utils/axios';
 import { motion } from 'framer-motion';
 
 export default function ResetPassword() {
@@ -27,7 +27,7 @@ export default function ResetPassword() {
     try {
       setLoading(true);
       setError('');
-      const response = await axios.post('/api/auth/verify-otp', data);
+      const response = await api.post('/auth/verify-otp', data);
       setResetToken(response.data.resetToken);
       setStep('reset');
     } catch (err) {
@@ -41,7 +41,7 @@ export default function ResetPassword() {
     try {
       setLoading(true);
       setError('');
-      await axios.post('/api/auth/reset-password', {
+      await api.post('/auth/reset-password', {
         resetToken,
         newPassword: data.newPassword
       });
