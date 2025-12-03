@@ -56,30 +56,13 @@ export default defineConfig({
     target: "es2020",
     outDir: "dist",
     assetsDir: "assets",
-    // Use terser with safe settings
-    minify: "terser",
+    // Disable minification completely to prevent initialization errors
+    minify: false,
     sourcemap: false,
-    chunkSizeWarningLimit: 2000,
+    chunkSizeWarningLimit: 3000,
     commonjsOptions: {
       include: [/node_modules/],
       transformMixedEsModules: true,
-    },
-    terserOptions: {
-      compress: {
-        drop_console: false,
-        drop_debugger: true,
-        // Don't hoist or reorder code that could break initialization
-        hoist_funs: false,
-        hoist_vars: false,
-        passes: 1, // Single pass to avoid aggressive optimizations
-      },
-      format: {
-        comments: false,
-        // Preserve variable names to avoid conflicts
-        preserve_annotations: true,
-      },
-      // CRITICAL: Don't mangle names to prevent initialization errors
-      mangle: false,
     },
     rollupOptions: {
       output: {
@@ -105,20 +88,14 @@ export default defineConfig({
           if (id.includes("node_modules/framer-motion")) {
             return "animation-vendor";
           }
-          // CRITICAL: Keep recharts AND ALL d3 libraries together
-          // This prevents circular dependency initialization issues
-          if (
-            id.includes("node_modules/recharts") ||
-            id.includes("node_modules/d3-") ||
-            id.includes("node_modules/d3/")
-          ) {
-            return "chart-vendor";
-          }
+          // CRITICAL FIX: Merge recharts/d3 with main vendor to avoid circular deps
+          // The circular dependencies in d3 cause initialization issues when split
           // Keep axios separate
           if (id.includes("node_modules/axios")) {
             return "http-vendor";
           }
-          // All other vendor code in one chunk
+          // ALL other vendor code (including recharts/d3) in one chunk
+          // This prevents circular dependency initialization errors
           if (id.includes("node_modules")) {
             return "vendor";
           }
@@ -126,15 +103,15 @@ export default defineConfig({
         chunkFileNames: "assets/js/[name]-[hash].js",
         entryFileNames: "assets/js/[name]-[hash].js",
         assetFileNames: "assets/[ext]/[name]-[hash].[ext]",
-        // Larger chunks to prevent over-splitting
-        experimentalMinChunkSize: 50000,
+        // Much larger chunks to prevent over-splitting
+        experimentalMinChunkSize: 100000,
       },
       onwarn(warning, warn) {
         // Suppress specific warnings
         if (warning.code === "MODULE_LEVEL_DIRECTIVE") return;
         if (warning.code === "THIS_IS_UNDEFINED") return;
         if (warning.code === "CIRCULAR_DEPENDENCY") {
-          // Circular deps are handled by grouping
+          // Circular deps are handled by merging chunks
           return;
         }
         warn(warning);
