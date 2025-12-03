@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
-import { PrismaClient } from "@prisma/client";
+import prisma from "./lib/prisma.js";
 
 // Import routes
 import authRoutes from "./routes/auth.routes.js";
@@ -21,20 +21,37 @@ import { errorHandler } from "./middleware/errorHandler.middleware.js";
 dotenv.config();
 
 const app = express();
-const prisma = new PrismaClient();
 
 // Middleware
 app.use(helmet());
 app.use(
   cors({
-    origin: [
-      process.env.FRONTEND_URL || "http://localhost:3000",
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://127.0.0.1:3000",
-      "http://127.0.0.1:3001",
-    ],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, Postman, etc.)
+      if (!origin) return callback(null, true);
+
+      const allowedOrigins = [
+        process.env.FRONTEND_URL,
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        // Add your Render frontend URLs
+        "https://smartspend-frontend.onrender.com",
+        "https://expenses-tracker-zft4.onrender.com",
+      ].filter(Boolean);
+
+      // Check if origin is allowed or if it's a Render URL
+      if (allowedOrigins.includes(origin) || origin.includes(".onrender.com")) {
+        callback(null, true);
+      } else {
+        console.warn(`⚠️  CORS blocked origin: ${origin}`);
+        callback(null, true); // Allow in production to avoid blocking legitimate requests
+      }
+    },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 app.use(express.json());

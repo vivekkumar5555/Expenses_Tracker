@@ -1,20 +1,12 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 export const getCategories = async (req, res, next) => {
   try {
     const categories = await prisma.category.findMany({
       where: {
-        OR: [
-          { isDefault: true },
-          { userId: req.user.id }
-        ]
+        OR: [{ isDefault: true }, { userId: req.user.id }],
       },
-      orderBy: [
-        { isDefault: 'desc' },
-        { name: 'asc' }
-      ]
+      orderBy: [{ isDefault: "desc" }, { name: "asc" }],
     });
 
     res.json({ categories });
@@ -33,8 +25,8 @@ export const createCategory = async (req, res, next) => {
         icon,
         color,
         userId: req.user.id,
-        isDefault: false
-      }
+        isDefault: false,
+      },
     });
 
     res.status(201).json({ category });
@@ -52,12 +44,12 @@ export const updateCategory = async (req, res, next) => {
     const category = await prisma.category.findFirst({
       where: {
         id,
-        userId: req.user.id
-      }
+        userId: req.user.id,
+      },
     });
 
     if (!category) {
-      return res.status(404).json({ message: 'Category not found' });
+      return res.status(404).json({ message: "Category not found" });
     }
 
     const updatedCategory = await prisma.category.update({
@@ -65,8 +57,8 @@ export const updateCategory = async (req, res, next) => {
       data: {
         ...(name && { name }),
         ...(icon !== undefined && { icon }),
-        ...(color !== undefined && { color })
-      }
+        ...(color !== undefined && { color }),
+      },
     });
 
     res.json({ category: updatedCategory });
@@ -82,34 +74,31 @@ export const deleteCategory = async (req, res, next) => {
     const category = await prisma.category.findFirst({
       where: {
         id,
-        userId: req.user.id
-      }
+        userId: req.user.id,
+      },
     });
 
     if (!category) {
-      return res.status(404).json({ message: 'Category not found' });
+      return res.status(404).json({ message: "Category not found" });
     }
 
     // Check if category has expenses
     const expenseCount = await prisma.expense.count({
-      where: { categoryId: id }
+      where: { categoryId: id },
     });
 
     if (expenseCount > 0) {
       return res.status(400).json({
-        message: 'Cannot delete category with existing expenses'
+        message: "Cannot delete category with existing expenses",
       });
     }
 
     await prisma.category.delete({
-      where: { id }
+      where: { id },
     });
 
-    res.json({ message: 'Category deleted successfully' });
+    res.json({ message: "Category deleted successfully" });
   } catch (error) {
     next(error);
   }
 };
-
-
-

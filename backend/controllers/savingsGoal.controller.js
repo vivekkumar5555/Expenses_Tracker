@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 const calculateRequiredDaily = (targetAmount, currentAmount, targetDate) => {
   const now = new Date();
@@ -17,12 +15,7 @@ const calculateRequiredDaily = (targetAmount, currentAmount, targetDate) => {
 
 export const createSavingsGoal = async (req, res, next) => {
   try {
-    const {
-      name,
-      targetAmount,
-      targetDate,
-      currentAmount
-    } = req.body;
+    const { name, targetAmount, targetDate, currentAmount } = req.body;
 
     const requiredDaily = calculateRequiredDaily(
       parseFloat(targetAmount),
@@ -37,8 +30,8 @@ export const createSavingsGoal = async (req, res, next) => {
         currentAmount: parseFloat(currentAmount || 0),
         targetDate: new Date(targetDate),
         userId: req.user.id,
-        requiredDaily
-      }
+        requiredDaily,
+      },
     });
 
     res.status(201).json({ savingsGoal });
@@ -51,11 +44,11 @@ export const getSavingsGoals = async (req, res, next) => {
   try {
     const savingsGoals = await prisma.savingsGoal.findMany({
       where: { userId: req.user.id },
-      orderBy: { targetDate: 'asc' }
+      orderBy: { targetDate: "asc" },
     });
 
     // Recalculate required daily for each goal
-    const goalsWithCalculations = savingsGoals.map(goal => {
+    const goalsWithCalculations = savingsGoals.map((goal) => {
       const requiredDaily = calculateRequiredDaily(
         goal.targetAmount,
         goal.currentAmount,
@@ -68,7 +61,7 @@ export const getSavingsGoals = async (req, res, next) => {
         ...goal,
         requiredDaily: Math.round(requiredDaily * 100) / 100,
         percentage: Math.round(percentage * 100) / 100,
-        remaining
+        remaining,
       };
     });
 
@@ -85,12 +78,12 @@ export const getSavingsGoal = async (req, res, next) => {
     const savingsGoal = await prisma.savingsGoal.findFirst({
       where: {
         id,
-        userId: req.user.id
-      }
+        userId: req.user.id,
+      },
     });
 
     if (!savingsGoal) {
-      return res.status(404).json({ message: 'Savings goal not found' });
+      return res.status(404).json({ message: "Savings goal not found" });
     }
 
     const requiredDaily = calculateRequiredDaily(
@@ -98,7 +91,8 @@ export const getSavingsGoal = async (req, res, next) => {
       savingsGoal.currentAmount,
       savingsGoal.targetDate
     );
-    const percentage = (savingsGoal.currentAmount / savingsGoal.targetAmount) * 100;
+    const percentage =
+      (savingsGoal.currentAmount / savingsGoal.targetAmount) * 100;
     const remaining = savingsGoal.targetAmount - savingsGoal.currentAmount;
 
     res.json({
@@ -106,8 +100,8 @@ export const getSavingsGoal = async (req, res, next) => {
         ...savingsGoal,
         requiredDaily: Math.round(requiredDaily * 100) / 100,
         percentage: Math.round(percentage * 100) / 100,
-        remaining
-      }
+        remaining,
+      },
     });
   } catch (error) {
     next(error);
@@ -117,36 +111,40 @@ export const getSavingsGoal = async (req, res, next) => {
 export const updateSavingsGoal = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const {
-      name,
-      targetAmount,
-      currentAmount,
-      targetDate
-    } = req.body;
+    const { name, targetAmount, currentAmount, targetDate } = req.body;
 
     const existing = await prisma.savingsGoal.findFirst({
       where: {
         id,
-        userId: req.user.id
-      }
+        userId: req.user.id,
+      },
     });
 
     if (!existing) {
-      return res.status(404).json({ message: 'Savings goal not found' });
+      return res.status(404).json({ message: "Savings goal not found" });
     }
 
     const updateData = {
       ...(name && { name }),
       ...(targetAmount && { targetAmount: parseFloat(targetAmount) }),
-      ...(currentAmount !== undefined && { currentAmount: parseFloat(currentAmount) }),
-      ...(targetDate && { targetDate: new Date(targetDate) })
+      ...(currentAmount !== undefined && {
+        currentAmount: parseFloat(currentAmount),
+      }),
+      ...(targetDate && { targetDate: new Date(targetDate) }),
     };
 
     // Recalculate required daily if relevant fields changed
     if (targetAmount || currentAmount !== undefined || targetDate) {
-      const finalTargetAmount = targetAmount ? parseFloat(targetAmount) : existing.targetAmount;
-      const finalCurrentAmount = currentAmount !== undefined ? parseFloat(currentAmount) : existing.currentAmount;
-      const finalTargetDate = targetDate ? new Date(targetDate) : existing.targetDate;
+      const finalTargetAmount = targetAmount
+        ? parseFloat(targetAmount)
+        : existing.targetAmount;
+      const finalCurrentAmount =
+        currentAmount !== undefined
+          ? parseFloat(currentAmount)
+          : existing.currentAmount;
+      const finalTargetDate = targetDate
+        ? new Date(targetDate)
+        : existing.targetDate;
 
       updateData.requiredDaily = calculateRequiredDaily(
         finalTargetAmount,
@@ -157,7 +155,7 @@ export const updateSavingsGoal = async (req, res, next) => {
 
     const savingsGoal = await prisma.savingsGoal.update({
       where: { id },
-      data: updateData
+      data: updateData,
     });
 
     res.json({ savingsGoal });
@@ -173,23 +171,20 @@ export const deleteSavingsGoal = async (req, res, next) => {
     const savingsGoal = await prisma.savingsGoal.findFirst({
       where: {
         id,
-        userId: req.user.id
-      }
+        userId: req.user.id,
+      },
     });
 
     if (!savingsGoal) {
-      return res.status(404).json({ message: 'Savings goal not found' });
+      return res.status(404).json({ message: "Savings goal not found" });
     }
 
     await prisma.savingsGoal.delete({
-      where: { id }
+      where: { id },
     });
 
-    res.json({ message: 'Savings goal deleted successfully' });
+    res.json({ message: "Savings goal deleted successfully" });
   } catch (error) {
     next(error);
   }
 };
-
-
-

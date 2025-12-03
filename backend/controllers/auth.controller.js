@@ -1,9 +1,7 @@
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
-import { sendOTPEmail, generateOTP } from '../services/email.service.js';
-
-const prisma = new PrismaClient();
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import prisma from "../lib/prisma.js";
+import { sendOTPEmail, generateOTP } from "../services/email.service.js";
 
 export const register = async (req, res, next) => {
   try {
@@ -11,11 +9,11 @@ export const register = async (req, res, next) => {
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
     });
 
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: "User already exists" });
     }
 
     // Hash password
@@ -27,55 +25,53 @@ export const register = async (req, res, next) => {
         email,
         password: hashedPassword,
         firstName,
-        lastName
+        lastName,
       },
       select: {
         id: true,
         email: true,
         firstName: true,
         lastName: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
     // Create default settings
     await prisma.userSettings.create({
       data: {
-        userId: user.id
-      }
+        userId: user.id,
+      },
     });
 
     // Create default categories
     const defaultCategories = [
-      { name: 'Food & Dining', icon: '🍔', color: '#ef4444' },
-      { name: 'Transportation', icon: '🚗', color: '#3b82f6' },
-      { name: 'Shopping', icon: '🛍️', color: '#8b5cf6' },
-      { name: 'Bills & Utilities', icon: '💡', color: '#f59e0b' },
-      { name: 'Entertainment', icon: '🎬', color: '#ec4899' },
-      { name: 'Healthcare', icon: '🏥', color: '#10b981' },
-      { name: 'Education', icon: '📚', color: '#6366f1' },
-      { name: 'Other', icon: '📦', color: '#6b7280' }
+      { name: "Food & Dining", icon: "🍔", color: "#ef4444" },
+      { name: "Transportation", icon: "🚗", color: "#3b82f6" },
+      { name: "Shopping", icon: "🛍️", color: "#8b5cf6" },
+      { name: "Bills & Utilities", icon: "💡", color: "#f59e0b" },
+      { name: "Entertainment", icon: "🎬", color: "#ec4899" },
+      { name: "Healthcare", icon: "🏥", color: "#10b981" },
+      { name: "Education", icon: "📚", color: "#6366f1" },
+      { name: "Other", icon: "📦", color: "#6b7280" },
     ];
 
     await prisma.category.createMany({
-      data: defaultCategories.map(cat => ({
+      data: defaultCategories.map((cat) => ({
         ...cat,
         isDefault: true,
-        userId: null
-      }))
+        userId: null,
+      })),
     });
 
     // Generate token
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    });
 
     res.status(201).json({
-      message: 'User registered successfully',
+      message: "User registered successfully",
       user,
-      token
+      token,
     });
   } catch (error) {
     next(error);
@@ -88,37 +84,35 @@ export const login = async (req, res, next) => {
 
     // Find user
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
     });
 
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     // Generate token
-    const token = jwt.sign(
-      { userId: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-    );
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    });
 
     res.json({
-      message: 'Login successful',
+      message: "Login successful",
       user: {
         id: user.id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        emailVerified: user.emailVerified
+        emailVerified: user.emailVerified,
       },
-      token
+      token,
     });
   } catch (error) {
     next(error);
@@ -130,12 +124,12 @@ export const requestPasswordReset = async (req, res, next) => {
     const { email } = req.body;
 
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
     });
 
     if (!user) {
       // Don't reveal if user exists
-      return res.json({ message: 'If email exists, reset code has been sent' });
+      return res.json({ message: "If email exists, reset code has been sent" });
     }
 
     // Generate OTP
@@ -147,15 +141,15 @@ export const requestPasswordReset = async (req, res, next) => {
       data: {
         userId: user.id,
         code,
-        type: 'password_reset',
-        expiresAt
-      }
+        type: "password_reset",
+        expiresAt,
+      },
     });
 
     // Send email
-    await sendOTPEmail(user.email, code, 'password_reset');
+    await sendOTPEmail(user.email, code, "password_reset");
 
-    res.json({ message: 'If email exists, reset code has been sent' });
+    res.json({ message: "If email exists, reset code has been sent" });
   } catch (error) {
     next(error);
   }
@@ -166,45 +160,45 @@ export const verifyOTP = async (req, res, next) => {
     const { email, code } = req.body;
 
     const user = await prisma.user.findUnique({
-      where: { email }
+      where: { email },
     });
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
 
     const otpRecord = await prisma.otpCode.findFirst({
       where: {
         userId: user.id,
         code,
-        type: 'password_reset',
+        type: "password_reset",
         used: false,
         expiresAt: {
-          gt: new Date()
-        }
-      }
+          gt: new Date(),
+        },
+      },
     });
 
     if (!otpRecord) {
-      return res.status(400).json({ message: 'Invalid or expired code' });
+      return res.status(400).json({ message: "Invalid or expired code" });
     }
 
     // Mark as used
     await prisma.otpCode.update({
       where: { id: otpRecord.id },
-      data: { used: true }
+      data: { used: true },
     });
 
     // Generate temporary token for password reset
     const resetToken = jwt.sign(
-      { userId: user.id, type: 'password_reset' },
+      { userId: user.id, type: "password_reset" },
       process.env.JWT_SECRET,
-      { expiresIn: '15m' }
+      { expiresIn: "15m" }
     );
 
     res.json({
-      message: 'Code verified successfully',
-      resetToken
+      message: "Code verified successfully",
+      resetToken,
     });
   } catch (error) {
     next(error);
@@ -219,11 +213,11 @@ export const resetPassword = async (req, res, next) => {
     let decoded;
     try {
       decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
-      if (decoded.type !== 'password_reset') {
-        return res.status(400).json({ message: 'Invalid token type' });
+      if (decoded.type !== "password_reset") {
+        return res.status(400).json({ message: "Invalid token type" });
       }
     } catch (error) {
-      return res.status(400).json({ message: 'Invalid or expired token' });
+      return res.status(400).json({ message: "Invalid or expired token" });
     }
 
     // Hash new password
@@ -232,10 +226,10 @@ export const resetPassword = async (req, res, next) => {
     // Update password
     await prisma.user.update({
       where: { id: decoded.userId },
-      data: { password: hashedPassword }
+      data: { password: hashedPassword },
     });
 
-    res.json({ message: 'Password reset successfully' });
+    res.json({ message: "Password reset successfully" });
   } catch (error) {
     next(error);
   }
@@ -251,8 +245,8 @@ export const getMe = async (req, res, next) => {
         firstName: true,
         lastName: true,
         emailVerified: true,
-        createdAt: true
-      }
+        createdAt: true,
+      },
     });
 
     res.json({ user });
@@ -260,6 +254,3 @@ export const getMe = async (req, res, next) => {
     next(error);
   }
 };
-
-
-

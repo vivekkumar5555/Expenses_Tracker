@@ -1,19 +1,17 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 const calculateNextDueDate = (frequency, startDate, currentDate = null) => {
   const date = currentDate || new Date(startDate);
   const next = new Date(date);
 
   switch (frequency) {
-    case 'daily':
+    case "daily":
       next.setDate(next.getDate() + 1);
       break;
-    case 'weekly':
+    case "weekly":
       next.setDate(next.getDate() + 7);
       break;
-    case 'monthly':
+    case "monthly":
       next.setMonth(next.getMonth() + 1);
       break;
     default:
@@ -25,14 +23,8 @@ const calculateNextDueDate = (frequency, startDate, currentDate = null) => {
 
 export const createRecurringExpense = async (req, res, next) => {
   try {
-    const {
-      name,
-      amount,
-      frequency,
-      startDate,
-      endDate,
-      categoryId
-    } = req.body;
+    const { name, amount, frequency, startDate, endDate, categoryId } =
+      req.body;
 
     const nextDueDate = calculateNextDueDate(frequency, startDate);
 
@@ -45,11 +37,11 @@ export const createRecurringExpense = async (req, res, next) => {
         endDate: endDate ? new Date(endDate) : null,
         categoryId,
         userId: req.user.id,
-        nextDueDate
+        nextDueDate,
       },
       include: {
-        category: true
-      }
+        category: true,
+      },
     });
 
     res.status(201).json({ recurringExpense });
@@ -63,9 +55,9 @@ export const getRecurringExpenses = async (req, res, next) => {
     const recurringExpenses = await prisma.recurringExpense.findMany({
       where: { userId: req.user.id },
       include: {
-        category: true
+        category: true,
       },
-      orderBy: { nextDueDate: 'asc' }
+      orderBy: { nextDueDate: "asc" },
     });
 
     res.json({ recurringExpenses });
@@ -81,15 +73,15 @@ export const getRecurringExpense = async (req, res, next) => {
     const recurringExpense = await prisma.recurringExpense.findFirst({
       where: {
         id,
-        userId: req.user.id
+        userId: req.user.id,
       },
       include: {
-        category: true
-      }
+        category: true,
+      },
     });
 
     if (!recurringExpense) {
-      return res.status(404).json({ message: 'Recurring expense not found' });
+      return res.status(404).json({ message: "Recurring expense not found" });
     }
 
     res.json({ recurringExpense });
@@ -108,18 +100,18 @@ export const updateRecurringExpense = async (req, res, next) => {
       startDate,
       endDate,
       categoryId,
-      isActive
+      isActive,
     } = req.body;
 
     const existing = await prisma.recurringExpense.findFirst({
       where: {
         id,
-        userId: req.user.id
-      }
+        userId: req.user.id,
+      },
     });
 
     if (!existing) {
-      return res.status(404).json({ message: 'Recurring expense not found' });
+      return res.status(404).json({ message: "Recurring expense not found" });
     }
 
     const updateData = {
@@ -127,9 +119,11 @@ export const updateRecurringExpense = async (req, res, next) => {
       ...(amount && { amount: parseFloat(amount) }),
       ...(frequency && { frequency }),
       ...(startDate && { startDate: new Date(startDate) }),
-      ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
+      ...(endDate !== undefined && {
+        endDate: endDate ? new Date(endDate) : null,
+      }),
       ...(categoryId && { categoryId }),
-      ...(isActive !== undefined && { isActive })
+      ...(isActive !== undefined && { isActive }),
     };
 
     // Recalculate next due date if frequency or start date changed
@@ -145,8 +139,8 @@ export const updateRecurringExpense = async (req, res, next) => {
       where: { id },
       data: updateData,
       include: {
-        category: true
-      }
+        category: true,
+      },
     });
 
     res.json({ recurringExpense });
@@ -162,23 +156,20 @@ export const deleteRecurringExpense = async (req, res, next) => {
     const recurringExpense = await prisma.recurringExpense.findFirst({
       where: {
         id,
-        userId: req.user.id
-      }
+        userId: req.user.id,
+      },
     });
 
     if (!recurringExpense) {
-      return res.status(404).json({ message: 'Recurring expense not found' });
+      return res.status(404).json({ message: "Recurring expense not found" });
     }
 
     await prisma.recurringExpense.delete({
-      where: { id }
+      where: { id },
     });
 
-    res.json({ message: 'Recurring expense deleted successfully' });
+    res.json({ message: "Recurring expense deleted successfully" });
   } catch (error) {
     next(error);
   }
 };
-
-
-

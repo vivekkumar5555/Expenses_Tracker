@@ -1,6 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from "../lib/prisma.js";
 
 const calculateBudgetSpent = async (budget, userId) => {
   const startDate = budget.startDate;
@@ -10,8 +8,8 @@ const calculateBudgetSpent = async (budget, userId) => {
     userId,
     date: {
       gte: startDate,
-      lte: endDate
-    }
+      lte: endDate,
+    },
   };
 
   if (budget.categoryId) {
@@ -31,7 +29,7 @@ export const createBudget = async (req, res, next) => {
       startDate,
       endDate,
       categoryId,
-      alertThreshold
+      alertThreshold,
     } = req.body;
 
     const budget = await prisma.budget.create({
@@ -43,11 +41,11 @@ export const createBudget = async (req, res, next) => {
         endDate: endDate ? new Date(endDate) : null,
         categoryId: categoryId || null,
         userId: req.user.id,
-        alertThreshold: alertThreshold ? parseFloat(alertThreshold) : 80
+        alertThreshold: alertThreshold ? parseFloat(alertThreshold) : 80,
       },
       include: {
-        category: true
-      }
+        category: true,
+      },
     });
 
     res.status(201).json({ budget });
@@ -61,9 +59,9 @@ export const getBudgets = async (req, res, next) => {
     const budgets = await prisma.budget.findMany({
       where: { userId: req.user.id },
       include: {
-        category: true
+        category: true,
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     });
 
     // Calculate spent amount for each budget
@@ -78,7 +76,7 @@ export const getBudgets = async (req, res, next) => {
           spent,
           remaining: budget.amount - spent,
           percentage: Math.round(percentage * 100) / 100,
-          isAlert
+          isAlert,
         };
       })
     );
@@ -96,15 +94,15 @@ export const getBudget = async (req, res, next) => {
     const budget = await prisma.budget.findFirst({
       where: {
         id,
-        userId: req.user.id
+        userId: req.user.id,
       },
       include: {
-        category: true
-      }
+        category: true,
+      },
     });
 
     if (!budget) {
-      return res.status(404).json({ message: 'Budget not found' });
+      return res.status(404).json({ message: "Budget not found" });
     }
 
     const spent = await calculateBudgetSpent(budget, req.user.id);
@@ -117,8 +115,8 @@ export const getBudget = async (req, res, next) => {
         spent,
         remaining: budget.amount - spent,
         percentage: Math.round(percentage * 100) / 100,
-        isAlert
-      }
+        isAlert,
+      },
     });
   } catch (error) {
     next(error);
@@ -135,18 +133,18 @@ export const updateBudget = async (req, res, next) => {
       startDate,
       endDate,
       categoryId,
-      alertThreshold
+      alertThreshold,
     } = req.body;
 
     const budget = await prisma.budget.findFirst({
       where: {
         id,
-        userId: req.user.id
-      }
+        userId: req.user.id,
+      },
     });
 
     if (!budget) {
-      return res.status(404).json({ message: 'Budget not found' });
+      return res.status(404).json({ message: "Budget not found" });
     }
 
     const updatedBudget = await prisma.budget.update({
@@ -156,13 +154,15 @@ export const updateBudget = async (req, res, next) => {
         ...(amount && { amount: parseFloat(amount) }),
         ...(period && { period }),
         ...(startDate && { startDate: new Date(startDate) }),
-        ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
+        ...(endDate !== undefined && {
+          endDate: endDate ? new Date(endDate) : null,
+        }),
         ...(categoryId !== undefined && { categoryId: categoryId || null }),
-        ...(alertThreshold && { alertThreshold: parseFloat(alertThreshold) })
+        ...(alertThreshold && { alertThreshold: parseFloat(alertThreshold) }),
       },
       include: {
-        category: true
-      }
+        category: true,
+      },
     });
 
     res.json({ budget: updatedBudget });
@@ -178,23 +178,20 @@ export const deleteBudget = async (req, res, next) => {
     const budget = await prisma.budget.findFirst({
       where: {
         id,
-        userId: req.user.id
-      }
+        userId: req.user.id,
+      },
     });
 
     if (!budget) {
-      return res.status(404).json({ message: 'Budget not found' });
+      return res.status(404).json({ message: "Budget not found" });
     }
 
     await prisma.budget.delete({
-      where: { id }
+      where: { id },
     });
 
-    res.json({ message: 'Budget deleted successfully' });
+    res.json({ message: "Budget deleted successfully" });
   } catch (error) {
     next(error);
   }
 };
-
-
-
