@@ -30,9 +30,14 @@ export const AuthProvider = ({ children }) => {
       const response = await axios.get('/api/auth/me');
       setUser(response.data.user);
     } catch (error) {
-      localStorage.removeItem('token');
-      setToken(null);
-      delete axios.defaults.headers.common['Authorization'];
+      // Only clear auth state when we are actually unauthorized
+      if (error?.response?.status === 401) {
+        localStorage.removeItem('token');
+        setToken(null);
+        delete axios.defaults.headers.common['Authorization'];
+      } else {
+        console.error('Failed to fetch user profile:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -43,6 +48,7 @@ export const AuthProvider = ({ children }) => {
     setToken(authToken);
     localStorage.setItem('token', authToken);
     axios.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
+    setLoading(false);
   };
 
   const logout = () => {
