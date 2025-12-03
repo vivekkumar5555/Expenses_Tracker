@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import axios from 'axios';
+import api from '../utils/axios';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
 import HeroSection from '../components/ThreeDScene';
@@ -17,7 +17,7 @@ export default function Login() {
     try {
       setLoading(true);
       setError('');
-      const response = await axios.post('/api/auth/login', data);
+      const response = await api.post('/auth/login', data);
       login(response.data.user, response.data.token);
       navigate('/');
     } catch (err) {
