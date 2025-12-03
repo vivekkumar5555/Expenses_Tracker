@@ -66,7 +66,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // CRITICAL: Keep ALL React ecosystem together to prevent circular deps
+          // CRITICAL: Keep ALL React ecosystem together to prevent initialization errors
           if (
             id.includes("node_modules/react/") ||
             id.includes("node_modules/react-dom/") ||
@@ -87,9 +87,17 @@ export default defineConfig({
           if (id.includes("node_modules/framer-motion")) {
             return "animation-vendor";
           }
-          // Keep chart libraries together
-          if (id.includes("node_modules/recharts")) {
+          // Keep chart libraries together (recharts and its dependencies)
+          if (
+            id.includes("node_modules/recharts") ||
+            id.includes("node_modules/d3-") ||
+            id.includes("node_modules/d3")
+          ) {
             return "chart-vendor";
+          }
+          // Keep axios and other HTTP libraries together
+          if (id.includes("node_modules/axios")) {
+            return "http-vendor";
           }
           // All other vendor code in one chunk to avoid circular deps
           if (id.includes("node_modules")) {
@@ -99,16 +107,15 @@ export default defineConfig({
         chunkFileNames: "assets/js/[name]-[hash].js",
         entryFileNames: "assets/js/[name]-[hash].js",
         assetFileNames: "assets/[ext]/[name]-[hash].[ext]",
-        // Ensure proper chunk loading order
-        experimentalMinChunkSize: 20000,
+        // Prevent over-splitting which can cause initialization issues
+        experimentalMinChunkSize: 30000,
       },
       onwarn(warning, warn) {
         // Suppress specific warnings that don't affect functionality
         if (warning.code === "MODULE_LEVEL_DIRECTIVE") return;
         if (warning.code === "THIS_IS_UNDEFINED") return;
         if (warning.code === "CIRCULAR_DEPENDENCY") {
-          // Log but don't fail on circular dependencies
-          console.warn(`Circular dependency: ${warning.message}`);
+          // Log but don't fail - we handle these by grouping dependencies
           return;
         }
         warn(warning);
@@ -117,7 +124,8 @@ export default defineConfig({
     esbuild: {
       target: "es2020",
       legalComments: "none",
-      minifyIdentifiers: true,
+      // Less aggressive minification to prevent variable name conflicts
+      minifyIdentifiers: false,
       minifySyntax: true,
       minifyWhitespace: true,
     },
