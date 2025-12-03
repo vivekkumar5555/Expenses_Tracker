@@ -154,13 +154,21 @@ export const sendOTPEmail = async (email, code, type = "password_reset") => {
   console.log("   OTP Code:", code);
   console.log("   Expires in: 10 minutes");
   console.log("   Type:", type);
+  console.log("   Timestamp:", new Date().toISOString());
   console.log("═══════════════════════════════════════════════════════");
   console.log("");
 
-  console.log("🔍 Checking email configuration...");
+  // Log environment variables status (without exposing passwords)
+  console.log("🔍 Email Configuration Check:");
+  console.log("   EMAIL_HOST:", process.env.EMAIL_HOST ? "SET" : "NOT SET");
+  console.log("   EMAIL_PORT:", process.env.EMAIL_PORT || "587 (default)");
+  console.log("   EMAIL_USER:", process.env.EMAIL_USER ? "SET" : "NOT SET");
+  console.log("   EMAIL_PASS:", process.env.EMAIL_PASS ? "SET" : "NOT SET");
+  console.log("   EMAIL_FROM:", process.env.EMAIL_FROM || "NOT SET");
+
   const transport = createTransporter();
 
-  console.log("🔍 Transport result:", transport ? "CREATED" : "NULL");
+  console.log("🔍 Transport result:", transport ? "✅ CREATED" : "❌ NULL");
 
   // If email is not configured, log the OTP and return immediately
   if (!transport) {
@@ -226,20 +234,37 @@ This code will expire in 10 minutes.
 If you didn't request this password reset, please ignore this email.
     `;
 
-    // Send email with proper error handling
-    const info = await transport.sendMail({
-      from: `"SmartSpend+" <${
-        process.env.EMAIL_FROM || process.env.EMAIL_USER
-      }>`,
+    // Prepare email options
+    const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+    const mailOptions = {
+      from: `"SmartSpend+" <${fromEmail}>`,
       to: email,
       subject,
       text,
       html,
-    });
+    };
 
-    console.log("✅ Email sent successfully!");
+    console.log("📤 Sending email...");
+    console.log("   From:", fromEmail);
+    console.log("   To:", email);
+    console.log("   Subject:", subject);
+
+    // Send email with timeout
+    const sendPromise = transport.sendMail(mailOptions);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Email sending timeout (30s)")), 30000)
+    );
+
+    const info = await Promise.race([sendPromise, timeoutPromise]);
+
+    console.log("");
+    console.log("✅✅✅ EMAIL SENT SUCCESSFULLY! ✅✅✅");
     console.log("   Message ID:", info.messageId);
     console.log("   To:", email);
+    console.log("   Response:", info.response || "No response");
+    console.log("   Accepted:", info.accepted);
+    console.log("   Rejected:", info.rejected);
+    console.log("");
     return true;
   } catch (error) {
     console.error("❌ Email sending failed!");

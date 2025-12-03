@@ -34,12 +34,27 @@ export default function Settings() {
   const onSubmit = async (data) => {
     try {
       setSaving(true);
-      await api.put('/settings', data);
+      // Clean data - remove empty strings and convert approvalLimit to number
+      const cleanedData = {
+        currency: data.currency || undefined,
+        language: data.language || undefined,
+        approvalLimit: data.approvalLimit ? parseFloat(data.approvalLimit) : undefined,
+        theme: data.theme || undefined
+      };
+      // Remove undefined values
+      Object.keys(cleanedData).forEach(key => 
+        cleanedData[key] === undefined && delete cleanedData[key]
+      );
+      
+      await api.put('/settings', cleanedData);
       alert('Settings saved successfully!');
       fetchSettings();
     } catch (error) {
       console.error('Failed to save settings:', error);
-      alert(error.response?.data?.message || 'Failed to save settings');
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.errors?.[0]?.msg || 
+                          'Failed to save settings';
+      alert(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -63,15 +78,15 @@ export default function Settings() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-800 rounded-xl p-6 lg:p-8 shadow-sm border border-gray-200 dark:border-gray-700 max-w-2xl"
+          className="bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 lg:p-8 shadow-sm border border-gray-200 dark:border-gray-700 w-full max-w-2xl mx-auto"
         >
-          <h3 className="text-lg font-semibold mb-6 text-gray-900 dark:text-white">User Preferences</h3>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <h3 className="text-base sm:text-lg font-semibold mb-4 sm:mb-6 text-gray-900 dark:text-white">User Preferences</h3>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
             <div>
-              <label className="block text-sm font-medium mb-2">Currency</label>
+              <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-white">Currency</label>
               <select
                 {...register('currency')}
-                className="w-full px-4 py-3 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors text-sm sm:text-base"
               >
                 <option value="USD">USD - US Dollar</option>
                 <option value="EUR">EUR - Euro</option>
@@ -84,10 +99,10 @@ export default function Settings() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Language</label>
+              <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-white">Language</label>
               <select
                 {...register('language')}
-                className="w-full px-4 py-3 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors text-sm sm:text-base"
               >
                 <option value="en">English</option>
                 <option value="es">Spanish</option>
@@ -99,13 +114,13 @@ export default function Settings() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Approval Limit</label>
+              <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-white">Approval Limit</label>
               <input
                 type="number"
                 step="0.01"
                 {...register('approvalLimit', { min: 0 })}
                 placeholder="0.00"
-                className="w-full px-4 py-3 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors text-sm sm:text-base"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Expenses above this amount will require approval
@@ -113,10 +128,10 @@ export default function Settings() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Theme</label>
+              <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-white">Theme</label>
               <select
                 {...register('theme')}
-                className="w-full px-4 py-3 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors"
+                className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-colors text-sm sm:text-base"
               >
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
@@ -126,7 +141,7 @@ export default function Settings() {
             <button
               type="submit"
               disabled={saving}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              className="w-full py-2.5 sm:py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm text-sm sm:text-base"
             >
               {saving ? 'Saving...' : 'Save Settings'}
             </button>

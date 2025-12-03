@@ -256,24 +256,24 @@ export default function Expenses() {
 
         {/* Modal */}
         {showModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="card max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8"
+              className="card max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto p-4 sm:p-6 lg:p-8"
             >
-              <h3 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-gray-900 dark:text-white">
                 {editingExpense ? 'Edit Expense' : 'Add Expense'}
               </h3>
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 dark:text-white mb-2">Amount *</label>
                     <input
                       type="number"
                       step="0.01"
                       {...register('amount', { required: 'Amount is required', min: 0 })}
-                      className="w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition-all"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-transparent transition-all text-sm sm:text-base"
                     />
                     {errors.amount && (
                       <p className="text-sm text-red-600 dark:text-red-400 mt-1">{errors.amount.message}</p>

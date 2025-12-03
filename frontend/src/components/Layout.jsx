@@ -196,8 +196,8 @@ const Layout = ({ children }) => {
         <div className="flex-1 lg:ml-72">
           {/* Desktop Topbar */}
           <header className="hidden lg:block sticky top-0 z-20 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800">
-            <div className="flex items-center justify-between px-8 py-5">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <div className="flex items-center justify-between px-4 lg:px-8 py-4 lg:py-5">
+              <h1 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">
                 {menuItems.find(item => item.path === location.pathname)?.label || 'Dashboard'}
               </h1>
               <div className="flex items-center gap-4">
@@ -212,7 +212,7 @@ const Layout = ({ children }) => {
           </header>
 
           {/* Page Content */}
-          <main className="p-6 lg:p-8 bg-gray-50 dark:bg-gray-950 min-h-screen">
+          <main className="p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-950 min-h-screen">
             {children}
           </main>
         </div>

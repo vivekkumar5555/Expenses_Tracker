@@ -12,10 +12,14 @@ const router = express.Router();
 router.use(authenticate);
 
 const updateSettingsValidation = [
-  body('currency').optional().isLength({ min: 3, max: 3 }),
-  body('language').optional().isLength({ min: 2, max: 5 }),
-  body('approvalLimit').optional().isFloat({ min: 0 }),
-  body('theme').optional().isIn(['light', 'dark'])
+  body('currency').optional().trim().isLength({ min: 3, max: 3 }).withMessage('Currency must be exactly 3 characters'),
+  body('language').optional().trim().isLength({ min: 2, max: 5 }).withMessage('Language must be 2-5 characters'),
+  body('approvalLimit').optional().custom((value) => {
+    if (value === '' || value === null || value === undefined) return true;
+    const num = parseFloat(value);
+    return !isNaN(num) && num >= 0;
+  }).withMessage('Approval limit must be a positive number'),
+  body('theme').optional().isIn(['light', 'dark']).withMessage('Theme must be light or dark')
 ];
 
 router.get('/', getSettings);

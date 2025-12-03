@@ -27,6 +27,40 @@ router.get('/email-test', async (req, res) => {
   res.json(result);
 });
 
+// Test sending actual email (for debugging)
+router.post('/send-test-email', async (req, res) => {
+  const { email } = req.body;
+  
+  if (!email) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Email address required' 
+    });
+  }
+
+  try {
+    const { sendOTPEmail } = await import('../services/email.service.js');
+    const testCode = '123456';
+    
+    console.log('🧪 Test email requested for:', email);
+    const result = await sendOTPEmail(email, testCode, 'password_reset');
+    
+    res.json({
+      success: true,
+      message: 'Test email sent (check logs for details)',
+      code: testCode,
+      email: email
+    });
+  } catch (error) {
+    console.error('❌ Test email error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send test email',
+      error: error.message
+    });
+  }
+});
+
 // Test database connection
 router.get('/db-test', async (req, res) => {
   try {

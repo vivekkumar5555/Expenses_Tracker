@@ -190,17 +190,23 @@ export const requestPasswordReset = async (req, res) => {
     console.log("💾 OTP saved to database successfully");
     console.log("🔑 OTP Code:", code); // Always log for debugging
 
-    // Send email in background - completely non-blocking
+    // Send email - use setImmediate to ensure it runs after response is sent
     console.log("📧 Attempting to send OTP email to:", user.email);
-    sendOTPEmail(user.email, code, "password_reset")
-      .then((result) => {
-        console.log("📧 Email sending promise resolved:", result);
-      })
-      .catch((error) => {
-        console.error("❌ Email sending promise rejected:", error.message);
+    console.log("   OTP Code for email:", code);
+    
+    // Use setImmediate to ensure email sending doesn't block response
+    setImmediate(async () => {
+      try {
+        console.log("📧 [setImmediate] Starting email send...");
+        const result = await sendOTPEmail(user.email, code, "password_reset");
+        console.log("📧 [setImmediate] Email sending completed:", result);
+      } catch (error) {
+        console.error("❌ [setImmediate] Email sending error:", error.message);
         console.error("   Error stack:", error.stack);
-        // Already handled in email service, but log here too for visibility
-      });
+        // Log OTP code again in case email fails
+        console.error("   ⚠️ OTP Code (in case email failed):", code);
+      }
+    });
 
     // Return success immediately - don't wait for email
     console.log("✅ Password reset request completed successfully");
