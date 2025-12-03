@@ -1,16 +1,17 @@
 import axios from 'axios';
 
-// Use environment variable for production, relative path for development
-const baseURL = import.meta.env.VITE_API_URL 
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : '/api';
+// Use backend URL directly for production, fallback to proxy for development
+const isDevelopment = import.meta.env.DEV;
+const baseURL = isDevelopment 
+  ? '/api' 
+  : 'https://expenses-tracker-server-mvkm.onrender.com/api';
 
 const api = axios.create({
   baseURL: baseURL,
   headers: {
     'Content-Type': 'application/json'
   },
-  withCredentials: true
+  withCredentials: false // Set to false for cross-origin requests
 });
 
 // Request interceptor
